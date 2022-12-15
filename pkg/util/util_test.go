@@ -204,12 +204,12 @@ func TestGetAbsPath(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "Case 1: Valid abs path resolution of `~`",
+			name:    "Case 1: Valid abs Path resolution of `~`",
 			path:    "~",
 			wantErr: false,
 		},
 		{
-			name:    "Case 2: Valid abs path resolution of `.`",
+			name:    "Case 2: Valid abs Path resolution of `.`",
 			path:    ".",
 			wantErr: false,
 		},
@@ -224,7 +224,7 @@ func TestGetAbsPath(t *testing.T) {
 				} else {
 					usr, err := user.Current()
 					if err != nil {
-						t.Errorf("Failed to get absolute path corresponding to `~`. Error %v", err)
+						t.Errorf("Failed to get absolute Path corresponding to `~`. Error %v", err)
 						return
 					}
 					tt.absPath = usr.HomeDir
@@ -233,7 +233,7 @@ func TestGetAbsPath(t *testing.T) {
 			case ".":
 				absPath, err := os.Getwd()
 				if err != nil {
-					t.Errorf("Failed to get absolute path corresponding to `.`. Error %v", err)
+					t.Errorf("Failed to get absolute Path corresponding to `.`. Error %v", err)
 					return
 				}
 				tt.absPath = absPath
@@ -251,11 +251,11 @@ func TestGetAbsPath(t *testing.T) {
 
 func TestCheckPathExists(t *testing.T) {
 	fs := filesystem.NewFakeFs()
-	fs.MkdirAll("/path/to/devfile", 0755)
-	fs.WriteFile("/path/to/devfile/devfile.yaml", []byte(""), 0755)
+	fs.MkdirAll("/Path/to/devfile", 0755)
+	fs.WriteFile("/Path/to/devfile/devfile.yaml", []byte(""), 0755)
 
-	file := "/path/to/devfile/devfile.yaml"
-	missingFile := "/path/to/not/devfile"
+	file := "/Path/to/devfile/devfile.yaml"
+	missingFile := "/Path/to/not/devfile"
 
 	tests := []struct {
 		name     string
@@ -447,7 +447,7 @@ func TestGetContainerPortsFromStrings(t *testing.T) {
 		wantErr        bool
 	}{
 		{
-			name:  "with normal port values and normal protocol values in lowercase",
+			name:  "with normal port values and normal Protocol values in lowercase",
 			ports: []string{"8080/tcp", "9090/udp"},
 			containerPorts: []corev1.ContainerPort{
 				{
@@ -464,7 +464,7 @@ func TestGetContainerPortsFromStrings(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:  "with normal port values and normal protocol values in mixed case",
+			name:  "with normal port values and normal Protocol values in mixed case",
 			ports: []string{"8080/TcP", "9090/uDp"},
 			containerPorts: []corev1.ContainerPort{
 				{
@@ -481,7 +481,7 @@ func TestGetContainerPortsFromStrings(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:  "with normal port values and with one protocol value not mentioned",
+			name:  "with normal port values and with one Protocol value not mentioned",
 			ports: []string{"8080", "9090/Udp"},
 			containerPorts: []corev1.ContainerPort{
 				{
@@ -498,17 +498,17 @@ func TestGetContainerPortsFromStrings(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "with normal port values and with one invalid protocol value",
+			name:    "with normal port values and with one invalid Protocol value",
 			ports:   []string{"8080/blah", "9090/Udp"},
 			wantErr: true,
 		},
 		{
-			name:    "with invalid port values and normal protocol",
+			name:    "with invalid port values and normal Protocol",
 			ports:   []string{"ads/Tcp", "9090/Udp"},
 			wantErr: true,
 		},
 		{
-			name:    "with invalid port values and one missing protocol value",
+			name:    "with invalid port values and one missing Protocol value",
 			ports:   []string{"ads", "9090/Udp"},
 			wantErr: true,
 		},
@@ -617,7 +617,7 @@ func TestRemoveRelativePathFromFiles(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Case 1 - Remove the relative path from a list of files",
+			name: "Case 1 - Remove the relative Path from a list of files",
 			args: args{
 				path:   "/foo/bar",
 				input:  []string{"/foo/bar/1", "/foo/bar/2", "/foo/bar/3/", "/foo/bar/4/5/foo/bar"},
@@ -626,7 +626,7 @@ func TestRemoveRelativePathFromFiles(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Case 2 - Fail on purpose with an invalid path",
+			name: "Case 2 - Fail on purpose with an invalid Path",
 			args: args{
 				path:   `..`,
 				input:  []string{"foo", "bar"},
@@ -714,7 +714,7 @@ func TestGetRemoteFilesMarkedForDeletion(t *testing.T) {
 			want:       []string{"/projects/abc.txt", "/projects/def.txt", "/projects/hello.txt"},
 		},
 		{
-			name:       "case 4: remote path multiple folders",
+			name:       "case 4: remote Path multiple folders",
 			files:      []string{"abc.txt", "def.txt", "hello.txt"},
 			remotePath: "/test/folder",
 			want:       []string{"/test/folder/abc.txt", "/test/folder/def.txt", "/test/folder/hello.txt"},
@@ -992,12 +992,12 @@ func TestValidateFile(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name:     "Case 1: Valid file path",
+			name:     "Case 1: Valid file Path",
 			filePath: tempFile.Name(),
 			wantErr:  false,
 		},
 		{
-			name:     "Case 2: Invalid file path",
+			name:     "Case 2: Invalid file Path",
 			filePath: "!@#",
 			wantErr:  true,
 		},
@@ -1058,12 +1058,12 @@ func TestValidateFile(t *testing.T) {
 //	invalidGitUrl := map[string]string{
 //		"username": "devfile",
 //		"project":  "nonexistent",
-//		"branch":   "nonexistent",
+//		"Branch":   "nonexistent",
 //	}
 //	validGitUrl := map[string]string{
 //		"username": "devfile",
 //		"project":  "library",
-//		"branch":   "main",
+//		"Branch":   "main",
 //	}
 //
 //	tests := []struct {
@@ -1122,19 +1122,19 @@ func TestCopyFile(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "should be able to copy file to destination path",
+			name:    "should be able to copy file to destination Path",
 			srcPath: srcPath,
 			dstPath: dstPath,
 			wantErr: false,
 		},
 		{
-			name:    "should fail if source path is invalid",
+			name:    "should fail if source Path is invalid",
 			srcPath: fakePath,
 			dstPath: dstPath,
 			wantErr: true,
 		},
 		{
-			name:    "should fail if destination path is invalid",
+			name:    "should fail if destination Path is invalid",
 			srcPath: srcPath,
 			dstPath: fakePath,
 			wantErr: true,
@@ -1158,17 +1158,17 @@ func TestCopyFile(t *testing.T) {
 
 func TestCopyAllDirFiles(t *testing.T) {
 	fs := filesystem.NewFakeFs()
-	fs.MkdirAll("/path/to/src", 0755)
-	fs.MkdirAll("/path/to/dest", 0755)
-	fs.WriteFile("/path/to/src/devfile.yaml", []byte(""), 0755)
-	fs.WriteFile("/path/to/src/file.txt", []byte(""), 0755)
-	fs.WriteFile("/path/to/src/subdir/devfile.yaml", []byte(""), 0755)
-	fs.WriteFile("/path/to/src/subdir/file.txt", []byte(""), 0755)
+	fs.MkdirAll("/Path/to/src", 0755)
+	fs.MkdirAll("/Path/to/dest", 0755)
+	fs.WriteFile("/Path/to/src/devfile.yaml", []byte(""), 0755)
+	fs.WriteFile("/Path/to/src/file.txt", []byte(""), 0755)
+	fs.WriteFile("/Path/to/src/subdir/devfile.yaml", []byte(""), 0755)
+	fs.WriteFile("/Path/to/src/subdir/file.txt", []byte(""), 0755)
 
-	srcDir := "/path/to/src"
-	srcSubDir := "/path/to/src/subdir"
-	destDir := "/path/to/dest"
-	missingDir := "/invalid/path/to/dir"
+	srcDir := "/Path/to/src"
+	srcSubDir := "/Path/to/src/subdir"
+	destDir := "/Path/to/dest"
+	missingDir := "/invalid/Path/to/dir"
 
 	tests := []struct {
 		name    string
@@ -1177,19 +1177,19 @@ func TestCopyAllDirFiles(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "should be able to copy files to destination path",
+			name:    "should be able to copy files to destination Path",
 			srcDir:  srcDir,
 			destDir: destDir,
 			wantErr: false,
 		},
 		{
-			name:    "should be able to copy subdir files to destination path",
+			name:    "should be able to copy subdir files to destination Path",
 			srcDir:  srcSubDir,
 			destDir: destDir,
 			wantErr: false,
 		},
 		{
-			name:    "should fail if source path is invalid",
+			name:    "should fail if source Path is invalid",
 			srcDir:  missingDir,
 			destDir: destDir,
 			wantErr: true,
@@ -1209,7 +1209,7 @@ func TestCopyAllDirFiles(t *testing.T) {
 func TestPathEqual(t *testing.T) {
 	currentDir, err := os.Getwd()
 	if err != nil {
-		t.Errorf("Can't get absolute path of current working directory with error: %v", err)
+		t.Errorf("Can't get absolute Path of current working directory with error: %v", err)
 	}
 	fileAbsPath := filepath.Join(currentDir, "file")
 	fileRelPath := filepath.Join(".", "file")
@@ -1227,7 +1227,7 @@ func TestPathEqual(t *testing.T) {
 			want:       true,
 		},
 		{
-			name:       "Case 2: Two paths (one absolute path, one relative path) are equal",
+			name:       "Case 2: Two paths (one absolute Path, one relative Path) are equal",
 			firstPath:  fileAbsPath,
 			secondPath: fileRelPath,
 			want:       true,

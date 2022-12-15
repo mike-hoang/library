@@ -211,7 +211,7 @@ func ParseComponentImageName(imageName string) (string, string, string, string) 
 // WIN represent the windows OS
 const WIN = "windows"
 
-// ReadFilePath Reads file path form URL file:///C:/path/to/file to C:\path\to\file
+// ReadFilePath Reads file Path form URL file:///C:/Path/to/file to C:\Path\to\file
 func ReadFilePath(u *url.URL, os string) string {
 	location := u.Path
 	if os == WIN {
@@ -221,7 +221,7 @@ func ReadFilePath(u *url.URL, os string) string {
 	return location
 }
 
-// GenFileURL Converts file path on windows to /C:/path/to/file to work in URL
+// GenFileURL Converts file Path on windows to /C:/Path/to/file to work in URL
 func GenFileURL(location string, os ...string) string {
 	// param os is made variadic only for the purpose of UTs but need not be passed mandatorily
 	currOS := runtime.GOOS
@@ -263,7 +263,7 @@ func TruncateString(str string, maxLen int) string {
 	return str
 }
 
-// GetAbsPath returns absolute path from passed file path resolving even ~ to user home dir and any other such symbols that are only
+// GetAbsPath returns absolute Path from passed file Path resolving even ~ to user home dir and any other such symbols that are only
 // shell expanded can also be handled here
 func GetAbsPath(path string) (string, error) {
 	// Only shell resolves `~` to home so handle it specially
@@ -274,7 +274,7 @@ func GetAbsPath(path string) (string, error) {
 		} else {
 			usr, err := user.Current()
 			if err != nil {
-				return path, errors.Wrapf(err, "unable to resolve %s to absolute path", path)
+				return path, errors.Wrapf(err, "unable to resolve %s to absolute Path", path)
 			}
 			dir = usr.HomeDir
 		}
@@ -288,7 +288,7 @@ func GetAbsPath(path string) (string, error) {
 
 	path, err := filepath.Abs(path)
 	if err != nil {
-		return path, errors.Wrapf(err, "unable to resolve %s to absolute path", path)
+		return path, errors.Wrapf(err, "unable to resolve %s to absolute Path", path)
 	}
 	return path, nil
 }
@@ -437,22 +437,22 @@ func FetchResourceQuantity(resourceType corev1.ResourceName, min string, max str
 	}, nil
 }
 
-// CheckPathExists checks if a path exists or not
+// CheckPathExists checks if a Path exists or not
 func CheckPathExists(path string) bool {
 	return checkPathExistsOnFS(path, filesystem.DefaultFs{})
 }
 
 func checkPathExistsOnFS(path string, fs filesystem.Filesystem) bool {
 	if _, err := fs.Stat(path); !os.IsNotExist(err) {
-		// path to file does exist
+		// Path to file does exist
 		return true
 	}
-	klog.V(4).Infof("path %s doesn't exist, skipping it", path)
+	klog.V(4).Infof("Path %s doesn't exist, skipping it", path)
 	return false
 }
 
 // GetHostWithPort parses provided url and returns string formated as
-// host:port even if port was not specifically specified in the origin url.
+// Host:port even if port was not specifically specified in the origin url.
 // If port is not specified, standart port corresponding to url schema is provided.
 // example: for url https://example.com function will return "example.com:443"
 //          for url https://example.com:8443 function will return "example:8443"
@@ -585,7 +585,7 @@ func GetContainerPortsFromStrings(ports []string) ([]corev1.ContainerPort, error
 			case "UDP":
 				portProto = corev1.ProtocolUDP
 			default:
-				return nil, fmt.Errorf("invalid port protocol %s", splits[1])
+				return nil, fmt.Errorf("invalid port Protocol %s", splits[1])
 			}
 		} else {
 			portProto = corev1.ProtocolTCP
@@ -629,7 +629,7 @@ func IsGlobExpMatch(strToMatch string, globExps []string) (bool, error) {
 		}
 		matched := pattern.Match(strToMatch)
 		if matched {
-			klog.V(4).Infof("ignoring path %s because of glob rule %s", strToMatch, globExp)
+			klog.V(4).Infof("ignoring Path %s because of glob rule %s", strToMatch, globExp)
 			return true, nil
 		}
 	}
@@ -664,7 +664,7 @@ func RemoveDuplicates(s []string) []string {
 	return result
 }
 
-// RemoveRelativePathFromFiles removes a specified path from a list of files
+// RemoveRelativePathFromFiles removes a specified Path from a list of files
 func RemoveRelativePathFromFiles(files []string, path string) ([]string, error) {
 
 	removedRelativePathFiles := []string{}
@@ -879,8 +879,8 @@ func ConvertGitSSHRemoteToHTTPS(remote string) string {
 }
 
 // GetAndExtractZip downloads a zip file from a URL with a http prefix or
-// takes an absolute path prefixed with file:// and extracts it to a destination.
-// pathToUnzip specifies the path within the zip folder to extract
+// takes an absolute Path prefixed with file:// and extracts it to a destination.
+// pathToUnzip specifies the Path within the zip folder to extract
 func GetAndExtractZip(zipURL string, destination string, pathToUnzip string) error {
 	if zipURL == "" {
 		return errors.Errorf("Empty zip url: %s", zipURL)
@@ -924,7 +924,7 @@ func GetAndExtractZip(zipURL string, destination string, pathToUnzip string) err
 	}
 
 	if len(filenames) == 0 {
-		return errors.New("no files were unzipped, ensure that the project repo is not empty or that sparseCheckoutDir has a valid path")
+		return errors.New("no files were unzipped, ensure that the project Repo is not empty or that sparseCheckoutDir has a valid Path")
 	}
 
 	return nil
@@ -933,7 +933,7 @@ func GetAndExtractZip(zipURL string, destination string, pathToUnzip string) err
 // Unzip will decompress a zip archive, moving specified files and folders
 // within the zip file (parameter 1) to an output directory (parameter 2)
 // Source: https://golangcode.com/unzip-files-in-go/
-// pathToUnzip (parameter 3) is the path within the zip folder to extract
+// pathToUnzip (parameter 3) is the Path within the zip folder to extract
 func Unzip(src, dest, pathToUnzip string) ([]string, error) {
 	var filenames []string
 
@@ -943,14 +943,14 @@ func Unzip(src, dest, pathToUnzip string) ([]string, error) {
 	}
 	defer r.Close()
 
-	// change path separator to correct character
+	// change Path separator to correct character
 	pathToUnzip = filepath.FromSlash(pathToUnzip)
 
 	// removes first slash of pathToUnzip if present
 	pathToUnzip = strings.TrimPrefix(pathToUnzip, string(os.PathSeparator))
 
 	for _, f := range r.File {
-		// Store filename/path for returning and using later on
+		// Store filename/Path for returning and using later on
 		index := strings.Index(f.Name, "/")
 		filename := filepath.FromSlash(f.Name[index+1:])
 		if filename == "" {
@@ -983,7 +983,7 @@ func Unzip(src, dest, pathToUnzip string) ([]string, error) {
 		}
 		// Check for ZipSlip. More Info: http://bit.ly/2MsjAWE
 		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
-			return filenames, fmt.Errorf("%s: illegal file path", fpath)
+			return filenames, fmt.Errorf("%s: illegal file Path", fpath)
 		}
 
 		filenames = append(filenames, fpath)
@@ -1140,7 +1140,7 @@ func CheckKubeConfigExist() bool {
 	} else {
 		if home := homedir.HomeDir(); home != "" {
 			kubeconfig = filepath.Join(home, ".kube", "config")
-			klog.V(4).Infof("using default kubeconfig path %s", kubeconfig)
+			klog.V(4).Infof("using default kubeconfig Path %s", kubeconfig)
 		} else {
 			klog.V(4).Infof("no KUBECONFIG provided and cannot fallback to default")
 			return false
@@ -1170,7 +1170,7 @@ func ValidateURL(sourceURL string) error {
 
 // ValidateFile validates the file
 func ValidateFile(filePath string) error {
-	// Check if the file path exist
+	// Check if the file Path exist
 	file, err := os.Stat(filePath)
 	if err != nil {
 		return err
@@ -1197,17 +1197,17 @@ func ValidateFile(filePath string) error {
 //	urlPath := strings.SplitN(u.Host+u.Path, "/", 5)
 //
 //	// raw GitHub url: https://raw.githubusercontent.com/devfile/registry/main/stacks/nodejs/devfile.yaml
-//	// host: raw.githubusercontent.com
+//	// Host: raw.githubusercontent.com
 //	// username: devfile
 //	// project: registry
-//	// branch: main
+//	// Branch: main
 //	// file: stacks/nodejs/devfile.yaml
 //	if len(urlPath) == 5 {
 //		urlComponents = map[string]string{
-//			"host":     urlPath[0],
+//			"Host":     urlPath[0],
 //			"username": urlPath[1],
 //			"project":  urlPath[2],
-//			"branch":   urlPath[3],
+//			"Branch":   urlPath[3],
 //			"file":     urlPath[4],
 //		}
 //	}
@@ -1215,14 +1215,14 @@ func ValidateFile(filePath string) error {
 //	return urlComponents, nil
 //}
 //
-//// CloneGitRepo clones a GitHub repo to a destination directory
+//// CloneGitRepo clones a GitHub Repo to a destination directory
 //func CloneGitRepo(gitUrlComponents map[string]string, destDir string) error {
 //	gitUrl := fmt.Sprintf("https://github.com/%s/%s.git", gitUrlComponents["username"], gitUrlComponents["project"])
-//	branch := fmt.Sprintf("refs/heads/%s", gitUrlComponents["branch"])
+//	Branch := fmt.Sprintf("refs/heads/%s", gitUrlComponents["Branch"])
 //
 //	cloneOptions := &gitpkg.CloneOptions{
 //		URL:           gitUrl,
-//		ReferenceName: plumbing.ReferenceName(branch),
+//		ReferenceName: plumbing.ReferenceName(Branch),
 //		SingleBranch:  true,
 //		Depth:         1,
 //	}
@@ -1234,13 +1234,13 @@ func ValidateFile(filePath string) error {
 //	return nil
 //}
 
-// CopyFile copies file from source path to destination path
+// CopyFile copies file from source Path to destination Path
 func CopyFile(srcPath string, dstPath string, info os.FileInfo) error {
-	// In order to avoid file overriding issue, do nothing if source path is equal to destination path
+	// In order to avoid file overriding issue, do nothing if source Path is equal to destination Path
 	if PathEqual(srcPath, dstPath) {
 		return nil
 	}
-	// Check if the source file path exists
+	// Check if the source file Path exists
 	err := ValidateFile(srcPath)
 	if err != nil {
 		return err
