@@ -16,11 +16,13 @@
 package util
 
 import (
-	"fmt"
+	"github.com/kylelemons/godebug/pretty"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -28,96 +30,372 @@ var (
 	githubToken    = "fake-github-token"
 	gitlabToken    = "fake-gitlab-token"
 	bitbucketToken = "fake-bitbucket-token"
-	url1           = "https://github.com/mike-hoang/private-repo-example"
-	url2           = "https://github.com/mike-hoang/private-repo-example/blob/main/README.md"
-	url3           = "https://github.com/mike-hoang/registry/tree/main/tests"
-	url4           = "https://raw.githubusercontent.com/devfile/registry/main/stacks/nodejs/devfile.yaml"
 )
 
-func TestGitHubParser(t *testing.T) {
-	{
-		g, err := ParseGitUrl(url1)
-		assert.NoError(t, err)
-		assert.Equal(t, "github.com", g.Host)
-		assert.Equal(t, "kubescape", g.Owner)
-		assert.Equal(t, "go-git-url", g.Repo)
-		assert.Equal(t, "", g.Branch)
-		assert.Equal(t, "", g.Path)
-	}
+type respondWithStatus struct {
+	status int
 }
 
-func TestParseGitUrl(t *testing.T) {
+func (rs respondWithStatus) RoundTrip(*http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: rs.status,
+	}, nil
+}
+
+var (
+	publicClient  = http.Client{Transport: respondWithStatus{status: http.StatusOK}}
+	privateClient = http.Client{Transport: respondWithStatus{status: http.StatusNotFound}}
+)
+
+func Test_parseGitUrlWithClient(t *testing.T) {
 	defer func() {
 		err := os.Unsetenv(githubToken)
 		if err != nil {
-			fmt.Println("failed to unset github token")
-		}
-		err = os.Unsetenv(bitbucketToken)
-		if err != nil {
-			fmt.Println("failed to unset bitbucket token")
+			t.Errorf("Failed to unset GitHub token")
 		}
 		err = os.Unsetenv(gitlabToken)
 		if err != nil {
-			fmt.Println("failed to unset gitlab token")
+			t.Errorf("Failed to unset GitLab token")
+		}
+		err = os.Unsetenv(bitbucketToken)
+		if err != nil {
+			t.Errorf("Failed to unset Bitbucket token")
 		}
 	}()
 
 	err := os.Setenv("GITHUB_TOKEN", githubToken)
 	if err != nil {
-		fmt.Println("failed to set github token env")
+		t.Errorf("Failed to set GitHub token")
 	}
-
-	err = os.Setenv("BITBUCKET_TOKEN", bitbucketToken)
-	if err != nil {
-		fmt.Println("failed to set bitbucket token env")
-	}
-
 	err = os.Setenv("GITLAB_TOKEN", gitlabToken)
 	if err != nil {
-		fmt.Println("failed to set gitlab token env")
+		t.Errorf("Failed to set GitLab token")
+	}
+	err = os.Setenv("BITBUCKET_TOKEN", bitbucketToken)
+	if err != nil {
+		t.Errorf("Failed to set Bitbucket token")
 	}
 
-	giturls := []string{
-		//"https://github.com/mike-hoang/private-repo-example",
-		//"https://github.com/mike-hoang/private-repo-example/blob/main/README.md",
-		//"https://github.com/mike-hoang/private-repo-example/blob/main",
-		//"https://github.com/mike-hoang/registry/tree/main/tests",
-		//"https://raw.githubusercontent.com/devfile/registry/main/stacks/nodejs/devfile.yaml",
-		//"https://github.com/devfile/registry/blob/main/stacks/nodejs/devfile.yaml",
-		//"https://github.com/whilp/git-urls/blob/master/urls_test.go",
-		//"https://github.com/go-git/go-git/blob/f9b2cce5c9e6510fefb21ce54c07b59e83b6da8f/plumbing/transport/common.go#L101",
-		//"https://github.com/go-git/go-git/tree/master/plumbing/transport",
-		//"https://raw.githubusercontent.com/devfile",
-		//"https://google.ca",
-		//"",
-		//" ",
-		//"https://raw.githubusercontent.com/",
-		//"https://raw.githubusercontent.com/devfile",
-		//"https://github.com/mike-hoang",
-
-		//"https://bitbucket.org/mike-hoang/private-repo-example/src/main/README.md",
-		//"https://bitbucket.org/mike-hoang/private-repo-example/raw/main/README.md",
-		//"https://bitbucket.org/mike-hoang/private-repo-example/src/main/directory/",
-		//"https://bitbucket.org/mike-hoang/private-repo-example/src/main/directory/test.txt",
-		//"https://bitbucket.org/mike-hoang/private-repo-example/main/directory/test.txt",
-		//"https://opensource.ncsa.illinois.edu/bitbucket/projects/U3D/repos/3dutilities/browse",
-
-		"https://gitlab.com/gitlab-org/cloud-native/gitlab-operator",
-		"https://gitlab.com/personal2464/private-repo-example",
-		"https://gitlab.com/personal2464/private-repo-example/-/raw/main/README.md",
-		"https://gitlab.com/personal2464/private-repo-example/-/tree/main/directory",
-		"https://gitlab.com/personal2464/private-repo-example/-/blob/main/directory/text.txt",
-		"https://gitlab.com/gitlab-org/gitlab-foss",
+	tests := []struct {
+		name    string
+		url     string
+		client  http.Client
+		wantUrl GitUrl
+		wantErr string
+	}{
+		{
+			name:    "should fail with empty url",
+			url:     "",
+			client:  publicClient,
+			wantErr: "URL is invalid",
+		},
+		{
+			name:    "should fail with invalid git host",
+			url:     "https://google.ca/",
+			client:  publicClient,
+			wantErr: "url host should be a valid GitHub, GitLab, or Bitbucket host*",
+		},
+		// GitHub
+		{
+			name:   "should parse public GitHub repo with root path",
+			url:    "https://github.com/devfile/library",
+			client: publicClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "github.com",
+				Owner:    "devfile",
+				Repo:     "library",
+				Branch:   "",
+				Path:     "",
+				token:    "",
+				IsFile:   false,
+			},
+		},
+		{
+			name:    "should fail with only GitHub host",
+			url:     "https://github.com/",
+			client:  publicClient,
+			wantErr: "url path should contain <user>/<repo>*",
+		},
+		{
+			name:   "should parse public GitHub repo with file path",
+			url:    "https://github.com/devfile/library/blob/main/devfile.yaml",
+			client: publicClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "github.com",
+				Owner:    "devfile",
+				Repo:     "library",
+				Branch:   "main",
+				Path:     "devfile.yaml",
+				token:    "",
+				IsFile:   true,
+			},
+		},
+		{
+			name:   "should parse public GitHub repo with raw file path",
+			url:    "https://raw.githubusercontent.com/devfile/library/main/devfile.yaml",
+			client: publicClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "raw.githubusercontent.com",
+				Owner:    "devfile",
+				Repo:     "library",
+				Branch:   "main",
+				Path:     "devfile.yaml",
+				token:    "",
+				IsFile:   true,
+			},
+		},
+		{
+			name:    "should fail with missing GitHub repo",
+			url:     "https://github.com/devfile",
+			client:  publicClient,
+			wantErr: "url path should contain <user>/<repo>*",
+		},
+		{
+			name:    "should fail with invalid GitHub raw file path",
+			url:     "https://raw.githubusercontent.com/devfile/library/devfile.yaml",
+			client:  publicClient,
+			wantErr: "raw url path should contain <owner>/<repo>/<branch>/<path/to/file>*",
+		},
+		{
+			name:   "should parse private GitHub repo with token",
+			url:    "https://github.com/fake-owner/fake-private-repo",
+			client: privateClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "github.com",
+				Owner:    "fake-owner",
+				Repo:     "fake-private-repo",
+				Branch:   "",
+				Path:     "",
+				token:    "fake-github-token",
+				IsFile:   false,
+			},
+		},
+		{
+			name:   "should parse private raw GitHub file path with token",
+			url:    "https://raw.githubusercontent.com/fake-owner/fake-private-repo/main/README.md",
+			client: privateClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "raw.githubusercontent.com",
+				Owner:    "fake-owner",
+				Repo:     "fake-private-repo",
+				Branch:   "main",
+				Path:     "README.md",
+				token:    "fake-github-token",
+				IsFile:   true,
+			},
+		},
+		// Gitlab
+		{
+			name:   "should parse public GitLab repo with root path",
+			url:    "https://gitlab.com/gitlab-org/gitlab-foss",
+			client: publicClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "gitlab.com",
+				Owner:    "gitlab-org",
+				Repo:     "gitlab-foss",
+				Branch:   "",
+				Path:     "",
+				token:    "",
+				IsFile:   false,
+			},
+		},
+		{
+			name:    "should fail with only GitLab host",
+			url:     "https://gitlab.com/",
+			client:  publicClient,
+			wantErr: "url path should contain <user>/<repo>*",
+		},
+		{
+			name:   "should parse public GitLab repo with file path",
+			url:    "https://gitlab.com/gitlab-org/gitlab-foss/-/blob/master/README.md",
+			client: publicClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "gitlab.com",
+				Owner:    "gitlab-org",
+				Repo:     "gitlab-foss",
+				Branch:   "master",
+				Path:     "README.md",
+				token:    "",
+				IsFile:   true,
+			},
+		},
+		{
+			name:    "should fail with missing GitLab repo",
+			url:     "https://gitlab.com/gitlab-org",
+			client:  publicClient,
+			wantErr: "url path should contain <user>/<repo>*",
+		},
+		{
+			name:    "should fail with missing GitLab keywords",
+			url:     "https://gitlab.com/gitlab-org/gitlab-foss/-/master/directory/README.md",
+			client:  publicClient,
+			wantErr: "url path should contain 'blob' or 'tree' or 'raw'*",
+		},
+		{
+			name:   "should parse private GitLab repo with token",
+			url:    "https://gitlab.com/fake-owner/fake-private-repo",
+			client: privateClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "gitlab.com",
+				Owner:    "fake-owner",
+				Repo:     "fake-private-repo",
+				Branch:   "",
+				Path:     "",
+				token:    "fake-gitlab-token",
+				IsFile:   false,
+			},
+		},
+		{
+			name:   "should parse private raw GitLab file path with token",
+			url:    "https://gitlab.com/fake-owner/fake-private-repo/-/raw/main/README.md",
+			client: privateClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "gitlab.com",
+				Owner:    "fake-owner",
+				Repo:     "fake-private-repo",
+				Branch:   "main",
+				Path:     "README.md",
+				token:    "fake-gitlab-token",
+				IsFile:   true,
+			},
+		},
+		// Bitbucket
+		{
+			name:   "should parse public Bitbucket repo with root path",
+			url:    "https://bitbucket.org/fake-owner/fake-public-repo",
+			client: publicClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "bitbucket.org",
+				Owner:    "fake-owner",
+				Repo:     "fake-public-repo",
+				Branch:   "",
+				Path:     "",
+				token:    "",
+				IsFile:   false,
+			},
+		},
+		{
+			name:    "should fail with only Bitbucket host",
+			url:     "https://bitbucket.org/",
+			client:  publicClient,
+			wantErr: "url path should contain <user>/<repo>*",
+		},
+		{
+			name:   "should parse public Bitbucket repo with file path",
+			url:    "https://bitbucket.org/fake-owner/fake-public-repo/src/main/README.md",
+			client: publicClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "bitbucket.org",
+				Owner:    "fake-owner",
+				Repo:     "fake-public-repo",
+				Branch:   "main",
+				Path:     "README.md",
+				token:    "",
+				IsFile:   true,
+			},
+		},
+		{
+			name:   "should parse public Bitbucket file path with nested path",
+			url:    "https://bitbucket.org/fake-owner/fake-public-repo/src/main/directory/test.txt",
+			client: publicClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "bitbucket.org",
+				Owner:    "fake-owner",
+				Repo:     "fake-public-repo",
+				Branch:   "main",
+				Path:     "directory/test.txt",
+				token:    "",
+				IsFile:   true,
+			},
+		},
+		{
+			name:   "should parse public Bitbucket repo with raw file path",
+			url:    "https://bitbucket.org/fake-owner/fake-public-repo/raw/main/README.md",
+			client: publicClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "bitbucket.org",
+				Owner:    "fake-owner",
+				Repo:     "fake-public-repo",
+				Branch:   "main",
+				Path:     "README.md",
+				token:    "",
+				IsFile:   true,
+			},
+		},
+		{
+			name:    "should fail with missing Bitbucket repo",
+			url:     "https://bitbucket.org/fake-owner",
+			client:  publicClient,
+			wantErr: "url path should contain <user>/<repo>*",
+		},
+		{
+			name:    "should fail with invalid Bitbucket directory or file path",
+			url:     "https://bitbucket.org/fake-owner/fake-public-repo/main/README.md",
+			client:  publicClient,
+			wantErr: "url path should contain path to directory or file*",
+		},
+		{
+			name:    "should fail with missing Bitbucket keywords",
+			url:     "https://bitbucket.org/fake-owner/fake-public-repo/main/test/README.md",
+			client:  publicClient,
+			wantErr: "url path should contain 'raw' or 'src'*",
+		},
+		{
+			name:   "should parse private Bitbucket repo with token",
+			url:    "https://bitbucket.org/fake-owner/fake-private-repo",
+			client: privateClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "bitbucket.org",
+				Owner:    "fake-owner",
+				Repo:     "fake-private-repo",
+				Branch:   "",
+				Path:     "",
+				token:    "fake-bitbucket-token",
+				IsFile:   false,
+			},
+		},
+		{
+			name:   "should parse private raw Bitbucket file path with token",
+			url:    "https://bitbucket.org/fake-owner/fake-private-repo/raw/main/README.md",
+			client: privateClient,
+			wantUrl: GitUrl{
+				Protocol: "https",
+				Host:     "bitbucket.org",
+				Owner:    "fake-owner",
+				Repo:     "fake-private-repo",
+				Branch:   "main",
+				Path:     "README.md",
+				token:    "fake-bitbucket-token",
+				IsFile:   true,
+			},
+		},
 	}
 
-	for _, giturl := range giturls {
-		g, err := ParseGitUrl(giturl)
-		fmt.Printf("url: %s\n%v\n", giturl, g)
-		fmt.Println("token: ", g.token)
-		if err != nil {
-			fmt.Printf("err: %s\n", err)
-		}
-		fmt.Println()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseGitUrlWithClient(tt.url, tt.client)
+			if (err != nil) != (tt.wantErr != "") {
+				t.Errorf("Unxpected error: %t, want: %v", err, tt.wantUrl)
+			} else if err == nil && !reflect.DeepEqual(got, tt.wantUrl) {
+				t.Errorf("Expected: %v, received: %v, difference at %v", tt.wantUrl, got, pretty.Compare(tt.wantUrl, got))
+			} else if err != nil {
+				assert.Regexp(t, tt.wantErr, err.Error(), "Error message should match")
+			}
+		})
 	}
 }
 
@@ -136,24 +414,12 @@ func TestCloneGitRepo(t *testing.T) {
 		Branch:   "nonexistent",
 	}
 
-	//validGitHubUrl := GitUrl{
-	//	Protocol: "https",
-	//	Host:     "github.com",
-	//	Owner:    "devfile",
-	//	Repo:     "library",
-	//	Branch:   "main",
-	//}
-
-	//https://gitlab.com/redhat/centos-stream/docs/enterprise-docs
-	//https://gitlab.com/gitlab-org/gitlab
-	//https://gitlab.com/gitlab-org/cloud-native/gitlab-operator.git
-	//https://github.com/whilp/git-urls.git
-	validGitLabUrl := GitUrl{
+	validGitHubUrl := GitUrl{
 		Protocol: "https",
-		Host:     "gitlab.com",
-		Owner:    "gitlab-org",
-		Repo:     "cloud-native/gitlab-operator",
-		Branch:   "master",
+		Host:     "github.com",
+		Owner:    "devfile",
+		Repo:     "library",
+		Branch:   "main",
 	}
 
 	tests := []struct {
@@ -168,15 +434,9 @@ func TestCloneGitRepo(t *testing.T) {
 			destDir: filepath.Join(os.TempDir(), "nonexistent"),
 			wantErr: true,
 		},
-		//{
-		//	name:    "should be able to clone valid github url",
-		//	gitUrl:  validGitHubUrl,
-		//	destDir: tempDir,
-		//	wantErr: false,
-		//},
 		{
-			name:    "should be able to clone valid gitlab url",
-			gitUrl:  validGitLabUrl,
+			name:    "should be able to clone valid github url",
+			gitUrl:  validGitHubUrl,
 			destDir: tempDir,
 			wantErr: false,
 		},

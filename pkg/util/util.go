@@ -1183,57 +1183,6 @@ func ValidateFile(filePath string) error {
 	return nil
 }
 
-//// GetGitUrlComponentsFromRaw converts a raw GitHub file link to a map of the url components
-//func GetGitUrlComponentsFromRaw(rawGitURL string) (map[string]string, error) {
-//	var urlComponents map[string]string
-//
-//	err := ValidateURL(rawGitURL)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	u, _ := url.Parse(rawGitURL)
-//	// the url scheme (e.g. https://) is removed before splitting into the 5 components
-//	urlPath := strings.SplitN(u.Host+u.Path, "/", 5)
-//
-//	// raw GitHub url: https://raw.githubusercontent.com/devfile/registry/main/stacks/nodejs/devfile.yaml
-//	// Host: raw.githubusercontent.com
-//	// username: devfile
-//	// project: registry
-//	// Branch: main
-//	// file: stacks/nodejs/devfile.yaml
-//	if len(urlPath) == 5 {
-//		urlComponents = map[string]string{
-//			"Host":     urlPath[0],
-//			"username": urlPath[1],
-//			"project":  urlPath[2],
-//			"Branch":   urlPath[3],
-//			"file":     urlPath[4],
-//		}
-//	}
-//
-//	return urlComponents, nil
-//}
-//
-//// CloneGitRepo clones a GitHub Repo to a destination directory
-//func CloneGitRepo(gitUrlComponents map[string]string, destDir string) error {
-//	gitUrl := fmt.Sprintf("https://github.com/%s/%s.git", gitUrlComponents["username"], gitUrlComponents["project"])
-//	Branch := fmt.Sprintf("refs/heads/%s", gitUrlComponents["Branch"])
-//
-//	cloneOptions := &gitpkg.CloneOptions{
-//		URL:           gitUrl,
-//		ReferenceName: plumbing.ReferenceName(Branch),
-//		SingleBranch:  true,
-//		Depth:         1,
-//	}
-//
-//	_, err := gitpkg.PlainClone(destDir, false, cloneOptions)
-//	if err != nil {
-//		return err
-//	}
-//	return nil
-//}
-
 // CopyFile copies file from source Path to destination Path
 func CopyFile(srcPath string, dstPath string, info os.FileInfo) error {
 	// In order to avoid file overriding issue, do nothing if source Path is equal to destination Path

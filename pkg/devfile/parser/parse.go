@@ -425,15 +425,17 @@ func parseFromURI(importReference v1.ImportReference, curDevfileCtx devfileCtx.D
 		}
 
 		d.Ctx = devfileCtx.NewURLDevfileCtx(newUri)
-		gitUrl, err := util.ParseGitUrl(newUri)
-		if err != nil {
-			return DevfileObj{}, err
-		}
-		if gitUrl.IsFile {
-			destDir := path.Dir(curDevfileCtx.GetAbsPath())
-			err = getResourcesFromGit(gitUrl, destDir)
+		if strings.Contains(newUri, util.RawGitHubHost) {
+			gitUrl, err := util.ParseGitUrl(newUri)
 			if err != nil {
 				return DevfileObj{}, err
+			}
+			if gitUrl.IsFile {
+				destDir := path.Dir(curDevfileCtx.GetAbsPath())
+				err = getResourcesFromGit(gitUrl, destDir)
+				if err != nil {
+					return DevfileObj{}, err
+				}
 			}
 		}
 	}
