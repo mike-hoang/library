@@ -18,6 +18,7 @@ package util
 import (
 	"bytes"
 	"fmt"
+	"github.com/devfile/library/v2/pkg/git"
 	"github.com/devfile/library/v2/pkg/testingutil/filesystem"
 	"github.com/kylelemons/godebug/pretty"
 	"github.com/stretchr/testify/assert"
@@ -946,19 +947,19 @@ func TestDownloadInMemory_GitRepo(t *testing.T) {
 		Body:       ioutil.NopCloser(bytes.NewReader(respBody)),
 	}
 
-	var Client = &MockClient{}
-	GetDoFunc = func(req *http.Request) (*http.Response, error) {
+	var Client = &git.MockClient{}
+	git.GetDoFunc = func(req *http.Request) (*http.Response, error) {
 		if req.Header.Get("Authorization") == "" {
 			return nil, fmt.Errorf("missing authorization header")
 		}
 		return resp, nil
 	}
 
-	var GitUrlMock = &MockGitUrl{}
-	GetGitRawFileAPIFunc = func() string {
+	var GitUrlMock = &git.MockGitUrl{}
+	git.GetGitRawFileAPIFunc = func() string {
 		return ""
 	}
-	GetSetTokenFunc = func(token string, httpTimeout *int) error {
+	git.GetSetTokenFunc = func(token string, httpTimeout *int) error {
 		return nil
 	}
 
@@ -999,7 +1000,7 @@ func TestDownloadInMemory_GitRepo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			GetIsPublicFunc = tt.GetIsPublicFunc
+			git.GetIsPublicFunc = tt.GetIsPublicFunc
 			result, err := downloadInMemoryWithClient(tt.params, Client, GitUrlMock)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("Unxpected error: %t, want: %v", err, tt.want)

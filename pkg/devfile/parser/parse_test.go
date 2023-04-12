@@ -19,7 +19,7 @@ import (
 	"context"
 	"fmt"
 	v1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
-	"github.com/devfile/library/v2/pkg/util"
+	"github.com/devfile/library/v2/pkg/git"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -48,6 +48,8 @@ const schemaVersion = string(data.APISchemaVersion220)
 var isTrue bool = true
 var isFalse bool = false
 var apiSchemaVersions = []string{data.APISchemaVersion200.String(), data.APISchemaVersion210.String(), data.APISchemaVersion220.String()}
+
+//var originalExecute = git.execute
 
 var defaultDiv testingutil.DockerImageValues = testingutil.DockerImageValues{
 	ImageName:    "image:latest",
@@ -4144,7 +4146,7 @@ func Test_parseFromURI(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseFromURI(tt.importReference, tt.curDevfileCtx, &resolutionContextTree{}, resolverTools{})
+			got, err := parseFromURI(tt.importReference, &tt.curDevfileCtx, &resolutionContextTree{}, resolverTools{}, tt.curDevfileCtx.GetGit())
 			if (err != nil) != (tt.wantErr != nil) {
 				t.Errorf("Test_parseFromURI() unexpected error: %v, wantErr %v", err, tt.wantErr)
 			} else if err == nil && !reflect.DeepEqual(got.Data, tt.wantDevFile.Data) {
@@ -4154,6 +4156,89 @@ func Test_parseFromURI(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_parseFromURI_New(t *testing.T) {
+	devfileContent := fmt.Sprintf("schemaVersion: 2.2.0")
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		_, err := rw.Write([]byte(devfileContent))
+		if err != nil {
+			t.Error(err)
+		}
+	}))
+
+	// Close the server when test finishes
+	defer server.Close()
+
+	git.GetNewGitUrlFunc = func(url string) (*git.MockGitUrl, error) {
+		return &git.MockGitUrl{
+			Protocol: "https",
+			Host:     "github.com",
+			Owner:    "devfile",
+			Repo:     "registry",
+			Branch:   "main",
+			Path:     "stacks/go/1.0.2/devfile.yaml",
+			IsFile:   true,
+		}, nil
+	}
+
+	git.GetIsGitProviderRepoFunc = func() bool {
+		return true
+	}
+
+	//git.GetSetTokenFunc = func(token string, httpTimeout *int) error {
+	//	return nil
+	//}
+
+	token := "invalid-token"
+	//var gitUrl git.Url
+	//var mockDevfileCtx devfileCtx.MockDevfileCtx
+
+	gitUrl := git.MockGitUrl{
+		Protocol: "https",
+		Host:     "github.com",
+		Owner:    "devfile",
+		Repo:     "registry",
+		Branch:   "main",
+		Path:     "stacks/go/1.0.2/devfile.yaml",
+		IsFile:   true,
+	}
+	curDevfileContext := devfileCtx.MockNewPrivateURLDevfileCtxWithGit(OutputDevfileYamlPath, token, gitUrl)
+	//curDevfileContext := devfileCtx.NewPrivateURLDevfileCtxWithGit(OutputDevfileYamlPath, token, &gitUrl)
+
+	tests := []struct {
+		name            string
+		curDevfileCtx   *devfileCtx.MockDevfileCtx
+		importReference v1.ImportReference
+		wantDevFile     DevfileObj
+		wantToken       string
+	}{
+		{
+			name:          "can parse the devfile contents for a private main devfile URL",
+			curDevfileCtx: &curDevfileContext,
+			wantToken:     token,
+			importReference: v1.ImportReference{
+				ImportReferenceUnion: v1.ImportReferenceUnion{
+					Uri: server.URL,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseFromURIWithGit(tt.importReference, tt.curDevfileCtx, &resolutionContextTree{}, resolverTools{}, gitUrl)
+			//fmt.Println("got: ", got)
+			fmt.Println("gotGit: ", got.Ctx.GetGit())
+			fmt.Println("tt.context: ", tt.curDevfileCtx)
+			if !reflect.DeepEqual(tt.wantToken, got.Ctx.GetToken()) {
+				t.Errorf("Expected %s, got %s", tt.wantToken, got.Ctx.GetToken())
+			} else if err != nil {
+				t.Errorf("Unxpected error: %t", err)
+			}
+		})
+	}
+	//git.Execute = originalExecute
 }
 
 func Test_parseFromRegistry(t *testing.T) {
@@ -4499,14 +4584,14 @@ func Test_getResourcesFromGit(t *testing.T) {
 
 	httpTimeout := 0
 
-	invalidGitHubUrl := util.GitUrl{
+	invalidGitHubUrl := git.Url{
 		Protocol: "",
 		Host:     "",
 		Owner:    "devfile",
 		Repo:     "nonexistent",
 		Branch:   "nonexistent",
 	}
-	validGitHubUrl := util.GitUrl{
+	validGitHubUrl := git.Url{
 		Protocol: "https",
 		Host:     "raw.githubusercontent.com",
 		Owner:    "devfile",
@@ -4518,7 +4603,7 @@ func Test_getResourcesFromGit(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		gitUrl  util.GitUrl
+		gitUrl  git.Url
 		destDir string
 		wantErr bool
 	}{

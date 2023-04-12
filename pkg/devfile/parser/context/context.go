@@ -17,6 +17,7 @@ package parser
 
 import (
 	"fmt"
+	"github.com/devfile/library/v2/pkg/git"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -45,18 +46,30 @@ type DevfileCtx struct {
 	// devfile json schema
 	jsonSchema string
 
-	//url path of the devfile
+	// url path of the devfile
 	url string
 
 	// token is a personal access token used with a private git repo URL
 	token string
+	// todo: use token from git interface
+
+	// git is an interface used for git urls
+	git git.Url
 
 	// filesystem for devfile
 	fs filesystem.Filesystem
 
-	// devfile kubernetes components has been coverted from uri to inlined in memory
+	// devfile kubernetes components has been converted from uri to inlined in memory
 	convertUriToInlined bool
 }
+
+//
+//func NewGitUrl(git git.IGitUrl) GitUrl {
+//	return GitUrl{
+//		IGitUrl:    git,
+//		MockGitUrl: nil,
+//	}
+//}
 
 // NewDevfileCtx returns a new DevfileCtx type object
 func NewDevfileCtx(path string) DevfileCtx {
@@ -68,16 +81,28 @@ func NewDevfileCtx(path string) DevfileCtx {
 
 // NewURLDevfileCtx returns a new DevfileCtx type object
 func NewURLDevfileCtx(url string) DevfileCtx {
+	var git git.Url = git.Url{}
+	return NewURLDevfileCtxWithGit(url, git)
+}
+
+func NewURLDevfileCtxWithGit(url string, git git.Url) DevfileCtx {
 	return DevfileCtx{
 		url: url,
+		git: git,
 	}
 }
 
 // NewPrivateURLDevfileCtx returns a new DevfileCtx type object
 func NewPrivateURLDevfileCtx(url string, token string) DevfileCtx {
+	var git git.Url = git.Url{}
+	return NewPrivateURLDevfileCtxWithGit(url, token, git)
+}
+
+func NewPrivateURLDevfileCtxWithGit(url string, token string, git git.Url) DevfileCtx {
 	return DevfileCtx{
 		url:   url,
 		token: token,
+		git:   git,
 	}
 }
 
@@ -149,6 +174,11 @@ func (d *DevfileCtx) Validate() error {
 
 	// Validate devfile
 	return d.ValidateDevfileSchema()
+}
+
+// GetGit returns the git object
+func (d *DevfileCtx) GetGit() git.Url {
+	return d.git
 }
 
 // GetAbsPath func returns current devfile absolute path

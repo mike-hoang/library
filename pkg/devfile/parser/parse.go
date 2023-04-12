@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	git "github.com/devfile/library/v2/pkg/git"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -274,7 +275,7 @@ func parseParentAndPlugin(d DevfileObj, resolveCtx *resolutionContextTree, tool 
 			var parentDevfileObj DevfileObj
 			switch {
 			case parent.Uri != "":
-				parentDevfileObj, err = parseFromURI(parent.ImportReference, d.Ctx, resolveCtx, tool)
+				parentDevfileObj, err = parseFromURI(parent.ImportReference, &d.Ctx, resolveCtx, tool, d.Ctx.GetGit())
 			case parent.Id != "":
 				parentDevfileObj, err = parseFromRegistry(parent.ImportReference, resolveCtx, tool)
 			case parent.Kubernetes != nil:
@@ -335,7 +336,7 @@ func parseParentAndPlugin(d DevfileObj, resolveCtx *resolutionContextTree, tool 
 			var pluginDevfileObj DevfileObj
 			switch {
 			case plugin.Uri != "":
-				pluginDevfileObj, err = parseFromURI(plugin.ImportReference, d.Ctx, resolveCtx, tool)
+				pluginDevfileObj, err = parseFromURI(plugin.ImportReference, &d.Ctx, resolveCtx, tool, d.Ctx.GetGit())
 			case plugin.Id != "":
 				pluginDevfileObj, err = parseFromRegistry(plugin.ImportReference, resolveCtx, tool)
 			case plugin.Kubernetes != nil:
@@ -394,7 +395,15 @@ func parseParentAndPlugin(d DevfileObj, resolveCtx *resolutionContextTree, tool 
 	return nil
 }
 
-func parseFromURI(importReference v1.ImportReference, curDevfileCtx devfileCtx.DevfileCtx, resolveCtx *resolutionContextTree, tool resolverTools) (DevfileObj, error) {
+func parseFromURI(importReference v1.ImportReference, curDevfileCtx devfileCtx.IDevfileCtx, resolveCtx *resolutionContextTree, tool resolverTools) (DevfileObj, error) {
+	//gitUrl := &devfileCtx.GitUrl{
+	//	IGitUrl:    curDevfileCtx.GetGit().IGitUrl,
+	//}
+	gitUrl := curDevfileCtx.GetGit()
+	return parseFromURIWithGit(importReference, curDevfileCtx, resolveCtx, tool, gitUrl)
+}
+
+func parseFromURIWithGit(importReference v1.ImportReference, curDevfileCtx devfileCtx.IDevfileCtx, resolveCtx *resolutionContextTree, tool resolverTools, g git.Url) (DevfileObj, error) {
 	uri := importReference.Uri
 	// validate URI
 	err := validation.ValidateURI(uri)
@@ -444,19 +453,28 @@ func parseFromURI(importReference v1.ImportReference, curDevfileCtx devfileCtx.D
 			d.Ctx = devfileCtx.NewURLDevfileCtx(newUri)
 		}
 
-		if util.IsGitProviderRepo(newUri) {
-			gitUrl, err := util.NewGitUrl(newUri)
+		gitUrl, err := g.NewGitUrl(newUri)
+		if gitUrl.IsGitProviderRepo() && gitUrl.IsFile {
+			destDir := path.Dir(curDevfileCtx.GetAbsPath())
+			err = getResourcesFromGit(gitUrl, destDir, tool.httpTimeout, token)
 			if err != nil {
 				return DevfileObj{}, err
 			}
-			if gitUrl.IsFile {
-				destDir := path.Dir(curDevfileCtx.GetAbsPath())
-				err = getResourcesFromGit(gitUrl, destDir, tool.httpTimeout, token)
-				if err != nil {
-					return DevfileObj{}, err
-				}
-			}
 		}
+
+		//if git.IsGitProviderRepo(newUri) {
+		//	gitUrl, err := git.NewGitUrl(newUri)
+		//	if err != nil {
+		//		return DevfileObj{}, err
+		//	}
+		//	if gitUrl.IsFile {
+		//		destDir := path.Dir(curDevfileCtx.GetAbsPath())
+		//		err = getResourcesFromGit(gitUrl, destDir, tool.httpTimeout, token)
+		//		if err != nil {
+		//			return DevfileObj{}, err
+		//		}
+		//	}
+		//}
 	}
 	importReference.Uri = newUri
 	newResolveCtx := resolveCtx.appendNode(importReference)
@@ -464,7 +482,7 @@ func parseFromURI(importReference v1.ImportReference, curDevfileCtx devfileCtx.D
 	return populateAndParseDevfile(d, newResolveCtx, tool, true)
 }
 
-func getResourcesFromGit(g *util.GitUrl, destDir string, httpTimeout *int, repoToken string) error {
+func getResourcesFromGit(g *git.Url, destDir string, httpTimeout *int, repoToken string) error {
 	stackDir, err := ioutil.TempDir(os.TempDir(), fmt.Sprintf("git-resources"))
 	if err != nil {
 		return fmt.Errorf("failed to create dir: %s, error: %v", stackDir, err)
@@ -478,7 +496,7 @@ func getResourcesFromGit(g *util.GitUrl, destDir string, httpTimeout *int, repoT
 		}
 	}
 
-	err = util.CloneGitRepo(*g, stackDir)
+	err = g.CloneGitRepo(stackDir)
 	if err != nil {
 		return err
 	}

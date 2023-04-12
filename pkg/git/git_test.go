@@ -13,14 +13,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+package git
 
 import (
+	"fmt"
+	"github.com/devfile/library/v2/pkg/testingutil"
 	"github.com/kylelemons/godebug/pretty"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -28,7 +31,7 @@ func Test_NewGitUrl(t *testing.T) {
 	tests := []struct {
 		name    string
 		url     string
-		wantUrl *GitUrl
+		wantUrl *Url
 		wantErr string
 	}{
 		{
@@ -45,7 +48,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse GitHub repo with root path",
 			url:  "https://github.com/devfile/library",
-			wantUrl: &GitUrl{
+			wantUrl: &Url{
 				Protocol: "https",
 				Host:     "github.com",
 				Owner:    "devfile",
@@ -63,7 +66,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse GitHub repo with file path",
 			url:  "https://github.com/devfile/library/blob/main/devfile.yaml",
-			wantUrl: &GitUrl{
+			wantUrl: &Url{
 				Protocol: "https",
 				Host:     "github.com",
 				Owner:    "devfile",
@@ -76,7 +79,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse GitHub repo with raw file path",
 			url:  "https://raw.githubusercontent.com/devfile/library/main/devfile.yaml",
-			wantUrl: &GitUrl{
+			wantUrl: &Url{
 				Protocol: "https",
 				Host:     "raw.githubusercontent.com",
 				Owner:    "devfile",
@@ -120,7 +123,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse GitLab repo with root path",
 			url:  "https://gitlab.com/gitlab-org/gitlab-foss",
-			wantUrl: &GitUrl{
+			wantUrl: &Url{
 				Protocol: "https",
 				Host:     "gitlab.com",
 				Owner:    "gitlab-org",
@@ -138,7 +141,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse GitLab repo with file path",
 			url:  "https://gitlab.com/gitlab-org/gitlab-foss/-/blob/master/README.md",
-			wantUrl: &GitUrl{
+			wantUrl: &Url{
 				Protocol: "https",
 				Host:     "gitlab.com",
 				Owner:    "gitlab-org",
@@ -167,7 +170,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse Bitbucket repo with root path",
 			url:  "https://bitbucket.org/fake-owner/fake-public-repo",
-			wantUrl: &GitUrl{
+			wantUrl: &Url{
 				Protocol: "https",
 				Host:     "bitbucket.org",
 				Owner:    "fake-owner",
@@ -185,7 +188,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse Bitbucket repo with file path",
 			url:  "https://bitbucket.org/fake-owner/fake-public-repo/src/main/README.md",
-			wantUrl: &GitUrl{
+			wantUrl: &Url{
 				Protocol: "https",
 				Host:     "bitbucket.org",
 				Owner:    "fake-owner",
@@ -198,7 +201,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse Bitbucket file path with nested path",
 			url:  "https://bitbucket.org/fake-owner/fake-public-repo/src/main/directory/test.txt",
-			wantUrl: &GitUrl{
+			wantUrl: &Url{
 				Protocol: "https",
 				Host:     "bitbucket.org",
 				Owner:    "fake-owner",
@@ -211,7 +214,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse Bitbucket repo with raw file path",
 			url:  "https://bitbucket.org/fake-owner/fake-public-repo/raw/main/README.md",
-			wantUrl: &GitUrl{
+			wantUrl: &Url{
 				Protocol: "https",
 				Host:     "bitbucket.org",
 				Owner:    "fake-owner",
@@ -240,7 +243,8 @@ func Test_NewGitUrl(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewGitUrl(tt.url)
+			g := Url{}
+			got, err := g.NewGitUrl(tt.url)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("Unxpected error: %t, want: %v", err, tt.wantUrl)
 			} else if err == nil && !reflect.DeepEqual(got, tt.wantUrl) {
@@ -255,12 +259,12 @@ func Test_NewGitUrl(t *testing.T) {
 func Test_GetGitRawFileAPI(t *testing.T) {
 	tests := []struct {
 		name string
-		g    GitUrl
+		g    Url
 		want string
 	}{
 		{
 			name: "Github url",
-			g: GitUrl{
+			g: Url{
 				Protocol: "https",
 				Host:     "github.com",
 				Owner:    "devfile",
@@ -272,7 +276,7 @@ func Test_GetGitRawFileAPI(t *testing.T) {
 		},
 		{
 			name: "GitLab url",
-			g: GitUrl{
+			g: Url{
 				Protocol: "https",
 				Host:     "gitlab.com",
 				Owner:    "gitlab-org",
@@ -284,7 +288,7 @@ func Test_GetGitRawFileAPI(t *testing.T) {
 		},
 		{
 			name: "Bitbucket url",
-			g: GitUrl{
+			g: Url{
 				Protocol: "https",
 				Host:     "bitbucket.org",
 				Owner:    "owner",
@@ -296,7 +300,7 @@ func Test_GetGitRawFileAPI(t *testing.T) {
 		},
 		{
 			name: "Empty GitUrl",
-			g:    GitUrl{},
+			g:    Url{},
 			want: "",
 		},
 	}
@@ -312,7 +316,7 @@ func Test_GetGitRawFileAPI(t *testing.T) {
 }
 
 func Test_IsPublic(t *testing.T) {
-	publicGitUrl := GitUrl{
+	publicGitUrl := Url{
 		Protocol: "https",
 		Host:     "github.com",
 		Owner:    "devfile",
@@ -321,7 +325,7 @@ func Test_IsPublic(t *testing.T) {
 		token:    "fake-token",
 	}
 
-	privateGitUrl := GitUrl{
+	privateGitUrl := Url{
 		Protocol: "https",
 		Host:     "github.com",
 		Owner:    "not",
@@ -334,7 +338,7 @@ func Test_IsPublic(t *testing.T) {
 
 	tests := []struct {
 		name string
-		g    GitUrl
+		g    Url
 		want bool
 	}{
 		{
@@ -365,7 +369,7 @@ func Test_CloneGitRepo(t *testing.T) {
 	tempDirGitLab := t.TempDir()
 	tempDirBitbucket := t.TempDir()
 
-	invalidGitUrl := GitUrl{
+	invalidGitUrl := Url{
 		Protocol: "",
 		Host:     "",
 		Owner:    "nonexistent",
@@ -373,7 +377,7 @@ func Test_CloneGitRepo(t *testing.T) {
 		Branch:   "nonexistent",
 	}
 
-	validPublicGitHubUrl := GitUrl{
+	validPublicGitHubUrl := Url{
 		Protocol: "https",
 		Host:     "github.com",
 		Owner:    "devfile",
@@ -381,7 +385,7 @@ func Test_CloneGitRepo(t *testing.T) {
 		Branch:   "main",
 	}
 
-	validPublicGitLabUrl := GitUrl{
+	validPublicGitLabUrl := Url{
 		Protocol: "https",
 		Host:     "gitlab.com",
 		Owner:    "mike-hoang",
@@ -389,7 +393,7 @@ func Test_CloneGitRepo(t *testing.T) {
 		Branch:   "main",
 	}
 
-	validPublicBitbucketUrl := GitUrl{
+	validPublicBitbucketUrl := Url{
 		Protocol: "https",
 		Host:     "bitbucket.org",
 		Owner:    "mike-hoang",
@@ -397,7 +401,7 @@ func Test_CloneGitRepo(t *testing.T) {
 		Branch:   "master",
 	}
 
-	invalidPrivateGitHubRepo := GitUrl{
+	invalidPrivateGitHubRepo := Url{
 		Protocol: "https",
 		Host:     "github.com",
 		Owner:    "fake-owner",
@@ -412,7 +416,7 @@ func Test_CloneGitRepo(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		gitUrl  GitUrl
+		gitUrl  Url
 		destDir string
 		wantErr string
 	}{
@@ -453,12 +457,87 @@ func Test_CloneGitRepo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CloneGitRepo(tt.gitUrl, tt.destDir)
+			err := tt.gitUrl.CloneGitRepo(tt.destDir)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("Unxpected error: %t, want: %v", err, tt.wantErr)
 			} else if err != nil {
 				assert.Regexp(t, tt.wantErr, err.Error(), "Error message should match")
 			}
 		})
+	}
+}
+
+func TestExecute(t *testing.T) {
+	tests := []struct {
+		name       string
+		command    CommandType
+		outputPath string
+		args       string
+		wantErr    error
+	}{
+		{
+			name:    "Simple command to execute",
+			command: GitCommand,
+			args:    "help",
+			wantErr: nil,
+		},
+		{
+			name:    "Invalid command, error expected",
+			command: "cd",
+			args:    "/",
+			wantErr: fmt.Errorf(unsupportedCmdMsg, "cd"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputStack := testingutil.NewOutputs()
+			var executedCmds []testingutil.Execution
+
+			Execute = newTestExecute(outputStack, testingutil.NewErrors(), &executedCmds)
+
+			_, err := Execute(tt.outputPath, tt.command, tt.args)
+
+			if tt.wantErr != nil && err != nil {
+				if tt.wantErr.Error() != err.Error() {
+					t.Errorf("TestExecute() unexpected error: %v, want error: %v ", err, tt.wantErr)
+				}
+			}
+
+			if tt.wantErr == nil && err != nil {
+				t.Errorf("TestExecute() unexpected error: %v, want error: nil ", err)
+			}
+
+			if tt.wantErr != nil && err == nil {
+				t.Errorf("TestExecute() expected want error: %v, got error: nil ", tt.wantErr)
+			}
+		})
+	}
+	Execute = originalExecute
+}
+
+func mockExecute(outputStack *testingutil.OutputStack, errorStack *testingutil.ErrorStack, executedCmds *[]testingutil.Execution, baseDir string, cmd CommandType, args ...string) ([]byte, error, *[]testingutil.Execution) {
+	if cmd == GitCommand {
+		*executedCmds = append(*executedCmds, testingutil.Execution{BaseDir: baseDir, Command: string(cmd), Args: args})
+		if len(args) > 0 && args[0] == "rev-parse" {
+			if strings.Contains(baseDir, "test-git-error") {
+				return []byte(""), fmt.Errorf("unable to retrive git commit id"), executedCmds
+			} else {
+				return []byte("ca82a6dff817ec66f44342007202690a93763949"), errorStack.Pop(), executedCmds
+			}
+		} else {
+			return outputStack.Pop(), errorStack.Pop(), executedCmds
+		}
+	}
+
+	return []byte(""), fmt.Errorf("Unsupported command \"%s\" ", string(cmd)), executedCmds
+}
+
+func newTestExecute(outputStack *testingutil.OutputStack, errorStack *testingutil.ErrorStack, executedCmds *[]testingutil.Execution) func(baseDir string, cmd CommandType, args ...string) ([]byte, error) {
+	return func(baseDir string, cmd CommandType, args ...string) ([]byte, error) {
+		var output []byte
+		var execErr error
+		output, execErr, executedCmds = mockExecute(outputStack, errorStack, executedCmds, baseDir, cmd, args...)
+		return output, execErr
 	}
 }
