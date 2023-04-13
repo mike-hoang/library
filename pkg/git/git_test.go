@@ -24,11 +24,11 @@ import (
 	"testing"
 )
 
-func Test_NewGitUrl(t *testing.T) {
+func Test_ParseGitUrl(t *testing.T) {
 	tests := []struct {
 		name    string
 		url     string
-		wantUrl *Url
+		wantUrl Url
 		wantErr string
 	}{
 		{
@@ -45,7 +45,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse GitHub repo with root path",
 			url:  "https://github.com/devfile/library",
-			wantUrl: &Url{
+			wantUrl: Url{
 				Protocol: "https",
 				Host:     "github.com",
 				Owner:    "devfile",
@@ -63,7 +63,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse GitHub repo with file path",
 			url:  "https://github.com/devfile/library/blob/main/devfile.yaml",
-			wantUrl: &Url{
+			wantUrl: Url{
 				Protocol: "https",
 				Host:     "github.com",
 				Owner:    "devfile",
@@ -76,7 +76,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse GitHub repo with raw file path",
 			url:  "https://raw.githubusercontent.com/devfile/library/main/devfile.yaml",
-			wantUrl: &Url{
+			wantUrl: Url{
 				Protocol: "https",
 				Host:     "raw.githubusercontent.com",
 				Owner:    "devfile",
@@ -120,7 +120,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse GitLab repo with root path",
 			url:  "https://gitlab.com/gitlab-org/gitlab-foss",
-			wantUrl: &Url{
+			wantUrl: Url{
 				Protocol: "https",
 				Host:     "gitlab.com",
 				Owner:    "gitlab-org",
@@ -138,7 +138,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse GitLab repo with file path",
 			url:  "https://gitlab.com/gitlab-org/gitlab-foss/-/blob/master/README.md",
-			wantUrl: &Url{
+			wantUrl: Url{
 				Protocol: "https",
 				Host:     "gitlab.com",
 				Owner:    "gitlab-org",
@@ -167,7 +167,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse Bitbucket repo with root path",
 			url:  "https://bitbucket.org/fake-owner/fake-public-repo",
-			wantUrl: &Url{
+			wantUrl: Url{
 				Protocol: "https",
 				Host:     "bitbucket.org",
 				Owner:    "fake-owner",
@@ -185,7 +185,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse Bitbucket repo with file path",
 			url:  "https://bitbucket.org/fake-owner/fake-public-repo/src/main/README.md",
-			wantUrl: &Url{
+			wantUrl: Url{
 				Protocol: "https",
 				Host:     "bitbucket.org",
 				Owner:    "fake-owner",
@@ -198,7 +198,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse Bitbucket file path with nested path",
 			url:  "https://bitbucket.org/fake-owner/fake-public-repo/src/main/directory/test.txt",
-			wantUrl: &Url{
+			wantUrl: Url{
 				Protocol: "https",
 				Host:     "bitbucket.org",
 				Owner:    "fake-owner",
@@ -211,7 +211,7 @@ func Test_NewGitUrl(t *testing.T) {
 		{
 			name: "should parse Bitbucket repo with raw file path",
 			url:  "https://bitbucket.org/fake-owner/fake-public-repo/raw/main/README.md",
-			wantUrl: &Url{
+			wantUrl: Url{
 				Protocol: "https",
 				Host:     "bitbucket.org",
 				Owner:    "fake-owner",
@@ -240,8 +240,7 @@ func Test_NewGitUrl(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			g := Url{}
-			got, err := g.NewGitUrl(tt.url)
+			got, err := ParseGitUrl(tt.url)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("Unxpected error: %t, want: %v", err, tt.wantUrl)
 			} else if err == nil && !reflect.DeepEqual(got, tt.wantUrl) {
@@ -463,78 +462,3 @@ func Test_CloneGitRepo(t *testing.T) {
 		})
 	}
 }
-
-//func TestExecute(t *testing.T) {
-//	tests := []struct {
-//		name       string
-//		command    CommandType
-//		outputPath string
-//		args       string
-//		wantErr    error
-//	}{
-//		{
-//			name:    "Simple command to execute",
-//			command: GitCommand,
-//			args:    "help",
-//			wantErr: nil,
-//		},
-//		{
-//			name:    "Invalid command, error expected",
-//			command: "cd",
-//			args:    "/",
-//			wantErr: fmt.Errorf(unsupportedCmdMsg, "cd"),
-//		},
-//	}
-//
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			outputStack := testingutil.NewOutputs()
-//			var executedCmds []testingutil.Execution
-//
-//			Execute = newTestExecute(outputStack, testingutil.NewErrors(), &executedCmds)
-//
-//			_, err := Execute(tt.outputPath, tt.command, tt.args)
-//
-//			if tt.wantErr != nil && err != nil {
-//				if tt.wantErr.Error() != err.Error() {
-//					t.Errorf("TestExecute() unexpected error: %v, want error: %v ", err, tt.wantErr)
-//				}
-//			}
-//
-//			if tt.wantErr == nil && err != nil {
-//				t.Errorf("TestExecute() unexpected error: %v, want error: nil ", err)
-//			}
-//
-//			if tt.wantErr != nil && err == nil {
-//				t.Errorf("TestExecute() expected want error: %v, got error: nil ", tt.wantErr)
-//			}
-//		})
-//	}
-//	Execute = originalExecute
-//}
-//
-//func mockExecute(outputStack *testingutil.OutputStack, errorStack *testingutil.ErrorStack, executedCmds *[]testingutil.Execution, baseDir string, cmd CommandType, args ...string) ([]byte, error, *[]testingutil.Execution) {
-//	if cmd == GitCommand {
-//		*executedCmds = append(*executedCmds, testingutil.Execution{BaseDir: baseDir, Command: string(cmd), Args: args})
-//		if len(args) > 0 && args[0] == "rev-parse" {
-//			if strings.Contains(baseDir, "test-git-error") {
-//				return []byte(""), fmt.Errorf("unable to retrive git commit id"), executedCmds
-//			} else {
-//				return []byte("ca82a6dff817ec66f44342007202690a93763949"), errorStack.Pop(), executedCmds
-//			}
-//		} else {
-//			return outputStack.Pop(), errorStack.Pop(), executedCmds
-//		}
-//	}
-//
-//	return []byte(""), fmt.Errorf("Unsupported command \"%s\" ", string(cmd)), executedCmds
-//}
-//
-//func newTestExecute(outputStack *testingutil.OutputStack, errorStack *testingutil.ErrorStack, executedCmds *[]testingutil.Execution) func(baseDir string, cmd CommandType, args ...string) ([]byte, error) {
-//	return func(baseDir string, cmd CommandType, args ...string) ([]byte, error) {
-//		var output []byte
-//		var execErr error
-//		output, execErr, executedCmds = mockExecute(outputStack, errorStack, executedCmds, baseDir, cmd, args...)
-//		return output, execErr
-//	}
-//}

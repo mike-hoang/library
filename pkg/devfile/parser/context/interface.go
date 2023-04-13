@@ -8,7 +8,6 @@ type IDevfileCtx interface {
 	SetDevfileJSONSchema() error
 	ValidateDevfileSchema() error
 	GetFs() filesystem.Filesystem
-	//GetGit() git.Url
 	SetDevfileAPIVersion() error
 	GetApiVersion() string
 	IsApiVersionSupported() bool

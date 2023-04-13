@@ -1098,7 +1098,6 @@ func DownloadInMemory(params HTTPRequestParams) ([]byte, error) {
 		ResponseHeaderTimeout: HTTPRequestResponseTimeout,
 	}, Timeout: HTTPRequestResponseTimeout}
 
-	//var gitUrl = &git.Url{}
 	var g git.IGitUrl
 	var err error
 

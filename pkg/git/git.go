@@ -37,38 +37,14 @@ type IGitUrl interface {
 	//NewGitUrl() IGitUrl
 	//NewGitUrlWithURL(url string) (IGitUrl, error)
 	//ParseGitUrl(fullUrl string) error
-	//GitRawFileAPI() string
+	GitRawFileAPI() string
 	SetToken(token string, httpTimeout *int) error
 	IsPublic(httpTimeout *int) bool
 	//IsGitProviderRepo() bool
-	CloneGitRepo(dest string) error
+	//CloneGitRepo(dest string) error
 	//GetResourcesFromGit(destDir string, httpTimeout *int, repoToken string) error
 	DownloadResourcesToDest(url string, destDir string, httpTimeout *int, token string) error
-
-	GetProtocol() string
-	GetHost() string
-	GetOwner() string
-	GetRepo() string
-	GetBranch() string
-	GetPath() string
-	GetToken() string
-	GetIsFile() bool
-	IsGitProviderRepo() bool
-	GitRawFileAPI() string
 }
-
-//type CloneGitRepo func(dest string) error
-//type MockCloneGitRepo func(dest string) error
-//
-//func (f CloneGitRepo) CloneGitRepo(dest string) error {
-//	fmt.Println("real clone!")
-//	return nil
-//}
-//
-//func (f MockCloneGitRepo) CloneGitRepo(dest string) error {
-//	fmt.Println("mock clone")
-//	return nil
-//}
 
 type Url struct {
 	Protocol string // URL scheme
@@ -81,14 +57,45 @@ type Url struct {
 	IsFile   bool   // defines if the URL points to a file in the repo
 }
 
-func (g *Url) NewGitUrlWithURL(url string) (IGitUrl, error) {
-	//TODO implement me
-	panic("implement me")
-}
+//func (g *Url) NewGitUrlWithURL(url string) (IGitUrl, error) {
+//	//TODO implement me
+//	panic("implement me")
+//}
 
-func (g *Url) CloneGitRepo(dest string) error {
-	//TODO implement me
-	fmt.Println("cloning real!")
+func (g *Url) CloneGitRepo(destDir string) error {
+	fmt.Println("test: real clone")
+	exist := CheckPathExists(destDir)
+	if !exist {
+		return fmt.Errorf("failed to clone repo, destination directory: '%s' does not exists", destDir)
+	}
+
+	host := g.GetHost()
+	if host == RawGitHubHost {
+		host = GitHubHost
+	}
+
+	var repoUrl string
+	if g.GetToken() == "" {
+		repoUrl = fmt.Sprintf("%s://%s/%s/%s.git", g.GetProtocol(), host, g.GetOwner(), g.GetRepo())
+	} else {
+		repoUrl = fmt.Sprintf("%s://token:%s@%s/%s/%s.git", g.GetProtocol(), g.GetToken(), host, g.GetOwner(), g.GetRepo())
+		if g.GetHost() == BitbucketHost {
+			repoUrl = fmt.Sprintf("%s://x-token-auth:%s@%s/%s/%s.git", g.GetProtocol(), g.GetToken(), host, g.GetOwner(), g.GetRepo())
+		}
+	}
+
+	c, err := execute(destDir, "git", "clone", repoUrl, ".")
+	fmt.Println("[clone repo] c: ", string(c))
+	fmt.Println("[clone repo] err: ", err)
+
+	if err != nil {
+		if g.GetToken() == "" {
+			return fmt.Errorf("failed to clone repo without a token, ensure that a token is set if the repo is private. error: %v", err)
+		} else {
+			return fmt.Errorf("failed to clone repo with token, ensure that the url and token is correct. error: %v", err)
+		}
+	}
+
 	return nil
 }
 
@@ -145,18 +152,13 @@ var execute = func(baseDir string, cmd CommandType, args ...string) ([]byte, err
 	return []byte(""), fmt.Errorf(unsupportedCmdMsg, string(cmd))
 }
 
-// NewGitUrlWithURL NewGitUrl creates a GitUrl from a string url
-//func (g *Url) NewGitUrlWithURL(url string) (*Url, error) {
-//	//g := NewGitUrl()
-//	if err := g.ParseGitUrl(url); err != nil {
-//		return g, err
-//	}
-//	return g, nil
-//}
-
 func (g *Url) DownloadResourcesToDest(url string, destDir string, httpTimeout *int, token string) error {
 	gitUrl, err := NewGitUrlWithURL(url)
-	if err == nil && gitUrl.IsGitProviderRepo() && gitUrl.GetIsFile() {
+	if err != nil {
+		return err
+	}
+
+	if gitUrl.IsGitProviderRepo() && gitUrl.GetIsFile() {
 		stackDir, err := ioutil.TempDir(os.TempDir(), fmt.Sprintf("git-resources"))
 		if err != nil {
 			return fmt.Errorf("failed to create dir: %s, error: %v", stackDir, err)
@@ -186,11 +188,11 @@ func (g *Url) DownloadResourcesToDest(url string, destDir string, httpTimeout *i
 
 // NewGitUrlWithURL NewGitUrl creates a GitUrl from a string url
 func NewGitUrlWithURL(url string) (*Url, error) {
-	var g Url
-	if g, err := ParseGitUrl(url); err != nil {
-		return &g, err
+	gitUrl, err := ParseGitUrl(url)
+	if err != nil {
+		return &gitUrl, err
 	}
-	return &g, nil
+	return &gitUrl, nil
 }
 
 // ParseGitUrl extracts information from a support git url
@@ -442,50 +444,3 @@ func (g *Url) IsGitProviderRepo() bool {
 		return false
 	}
 }
-
-// CloneGitRepo clones a git repo to a destination directory (either an absolute or relative path)
-//func CloneGitRepo(g IGitUrl, destDir string) error {
-//	exist := CheckPathExists(destDir)
-//	if !exist {
-//		return fmt.Errorf("failed to clone repo, destination directory: '%s' does not exists", destDir)
-//	}
-//
-//	host := g.GetHost()
-//	if host == RawGitHubHost {
-//		host = GitHubHost
-//	}
-//
-//	var repoUrl string
-//	if g.GetToken() == "" {
-//		repoUrl = fmt.Sprintf("%s://%s/%s/%s.git", g.GetProtocol(), host, g.GetOwner(), g.GetRepo())
-//	} else {
-//		repoUrl = fmt.Sprintf("%s://token:%s@%s/%s/%s.git", g.GetProtocol(), g.GetToken(), host, g.GetOwner(), g.GetRepo())
-//		if g.GetHost() == BitbucketHost {
-//			repoUrl = fmt.Sprintf("%s://x-token-auth:%s@%s/%s/%s.git", g.GetProtocol(), g.GetToken(), host, g.GetOwner(), g.GetRepo())
-//		}
-//	}
-//
-//	//c, err := execute("git", "clone", repoUrl, destDir)
-//	c, err := execute(destDir, "git", "clone", repoUrl)
-//	fmt.Println("[clone repo] c: ", string(c))
-//	fmt.Println("[clone repo] err: ", err)
-//
-//	///* #nosec G204 -- user input is processed into an expected format for the git clone command */
-//	//c := exec.Command("git", "clone", repoUrl, destDir)
-//	//c.Dir = destDir
-//	//
-//	//// set env to skip authentication prompt and directly error out
-//	//c.Env = os.Environ()
-//	//c.Env = append(c.Env, "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=/bin/echo")
-//	//
-//	//_, err := c.CombinedOutput()
-//	if err != nil {
-//		if g.GetToken() == "" {
-//			return fmt.Errorf("failed to clone repo without a token, ensure that a token is set if the repo is private. error: %v", err)
-//		} else {
-//			return fmt.Errorf("failed to clone repo with token, ensure that the url and token is correct. error: %v", err)
-//		}
-//	}
-//
-//	return nil
-//}
