@@ -50,10 +50,6 @@ type DevfileCtx struct {
 
 	// token is a personal access token used with a private git repo URL
 	token string
-	// todo: use token from git interface
-
-	// git is an interface used for git urls
-	//git git.Url
 
 	// filesystem for devfile
 	fs filesystem.Filesystem
@@ -72,19 +68,10 @@ func NewDevfileCtx(path string) DevfileCtx {
 
 // NewURLDevfileCtx returns a new DevfileCtx type object
 func NewURLDevfileCtx(url string) DevfileCtx {
-	//var git = git.Url{}
-	//return NewURLDevfileCtxWithGit(url, git)
 	return DevfileCtx{
 		url: url,
 	}
 }
-
-//func NewURLDevfileCtxWithGit(url string, git git.Url) DevfileCtx {
-//	return DevfileCtx{
-//		url: url,
-//		git: git,
-//	}
-//}
 
 // NewPrivateURLDevfileCtx returns a new DevfileCtx type object
 func NewPrivateURLDevfileCtx(url string, token string) DevfileCtx {
@@ -93,14 +80,6 @@ func NewPrivateURLDevfileCtx(url string, token string) DevfileCtx {
 		token: token,
 	}
 }
-
-//func NewPrivateURLDevfileCtxWithGit(url string, token string, git git.Url) DevfileCtx {
-//	return DevfileCtx{
-//		url:   url,
-//		token: token,
-//		git:   git,
-//	}
-//}
 
 // NewByteContentDevfileCtx set devfile content from byte data and returns a new DevfileCtx type object and error
 func NewByteContentDevfileCtx(data []byte) (d DevfileCtx, err error) {
@@ -171,11 +150,6 @@ func (d *DevfileCtx) Validate() error {
 	// Validate devfile
 	return d.ValidateDevfileSchema()
 }
-
-// GetGit returns the git object
-//func (d *DevfileCtx) GetGit() git.Url {
-//	return d.git
-//}
 
 // GetAbsPath func returns current devfile absolute path
 func (d *DevfileCtx) GetAbsPath() string {

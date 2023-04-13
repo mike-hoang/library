@@ -451,7 +451,7 @@ func parseFromURIWithGit(importReference v1.ImportReference, curDevfileCtx devfi
 		}
 
 		destDir := path.Dir(curDevfileCtx.GetAbsPath())
-		err = g.DownloadResourcesToDest(newUri, destDir, tool.httpTimeout, token)
+		err = g.DownloadGitRepoResources(newUri, destDir, tool.httpTimeout, token)
 		if err != nil {
 			return DevfileObj{}, err
 		}
@@ -830,6 +830,9 @@ func getKubernetesDefinitionFromUri(uri string, d devfileCtx.DevfileCtx) ([]byte
 			newUri = uri
 		}
 		params := util.HTTPRequestParams{URL: newUri}
+		if d.GetToken() != "" {
+			params.Token = d.GetToken()
+		}
 		data, err = util.DownloadInMemory(params)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error getting kubernetes resources definition information")
