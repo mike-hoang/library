@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"github.com/devfile/library/v2/pkg/git"
 	"github.com/devfile/library/v2/pkg/testingutil/filesystem"
 )
 
@@ -9,7 +8,7 @@ type IDevfileCtx interface {
 	SetDevfileJSONSchema() error
 	ValidateDevfileSchema() error
 	GetFs() filesystem.Filesystem
-	GetGit() git.Url
+	//GetGit() git.Url
 	SetDevfileAPIVersion() error
 	GetApiVersion() string
 	IsApiVersionSupported() bool
@@ -28,8 +27,3 @@ type IDevfileCtx interface {
 	SetDevfileContentFromBytes(data []byte) error
 	GetDevfileContent() []byte
 }
-
-//type GitUrl struct {
-//	git.IGitUrl
-//	git.MockGitUrl
-//}

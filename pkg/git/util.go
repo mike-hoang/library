@@ -16,15 +16,18 @@
 package git
 
 import (
+	"fmt"
 	"github.com/devfile/library/v2/pkg/testingutil/filesystem"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
 	"github.com/pkg/errors"
+	"io"
 	"io/ioutil"
 	"k8s.io/klog"
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 )
@@ -178,4 +181,80 @@ func checkPathExistsOnFS(path string, fs filesystem.Filesystem) bool {
 	}
 	klog.V(4).Infof("path %s doesn't exist, skipping it", path)
 	return false
+}
+
+// CopyAllDirFiles recursively copies a source directory to a destination directory
+func CopyAllDirFiles(srcDir, destDir string) error {
+	return copyAllDirFilesOnFS(srcDir, destDir, filesystem.DefaultFs{})
+}
+
+func copyAllDirFilesOnFS(srcDir, destDir string, fs filesystem.Filesystem) error {
+	var info os.FileInfo
+
+	files, err := fs.ReadDir(srcDir)
+	if err != nil {
+		return errors.Wrapf(err, "failed reading dir %v", srcDir)
+	}
+
+	for _, file := range files {
+		srcPath := path.Join(srcDir, file.Name())
+		destPath := path.Join(destDir, file.Name())
+
+		if file.IsDir() {
+			if info, err = fs.Stat(srcPath); err != nil {
+				return err
+			}
+			if err = fs.MkdirAll(destPath, info.Mode()); err != nil {
+				return err
+			}
+			if err = copyAllDirFilesOnFS(srcPath, destPath, fs); err != nil {
+				return err
+			}
+		} else {
+			if file.Name() == "devfile.yaml" {
+				continue
+			}
+			// Only copy files that do not exist in the destination directory
+			if !checkPathExistsOnFS(destPath, fs) {
+				if err := copyFileOnFs(srcPath, destPath, fs); err != nil {
+					return errors.Wrapf(err, "failed to copy %s to %s", srcPath, destPath)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// copied from: https://github.com/devfile/registry-support/blob/main/index/generator/library/util.go
+func copyFileOnFs(src, dst string, fs filesystem.Filesystem) error {
+	var err error
+	var srcinfo os.FileInfo
+
+	srcfd, err := fs.Open(src)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if e := srcfd.Close(); e != nil {
+			fmt.Printf("err occurred while closing file: %v", e)
+		}
+	}()
+
+	dstfd, err := fs.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if e := dstfd.Close(); e != nil {
+			fmt.Printf("err occurred while closing file: %v", e)
+		}
+	}()
+
+	if _, err = io.Copy(dstfd, srcfd); err != nil {
+		return err
+	}
+	if srcinfo, err = fs.Stat(src); err != nil {
+		return err
+	}
+	return fs.Chmod(dst, srcinfo.Mode())
 }

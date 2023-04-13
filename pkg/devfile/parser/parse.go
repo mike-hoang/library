@@ -19,7 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	git "github.com/devfile/library/v2/pkg/git"
+	"github.com/devfile/library/v2/pkg/git"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -275,7 +275,7 @@ func parseParentAndPlugin(d DevfileObj, resolveCtx *resolutionContextTree, tool 
 			var parentDevfileObj DevfileObj
 			switch {
 			case parent.Uri != "":
-				parentDevfileObj, err = parseFromURI(parent.ImportReference, &d.Ctx, resolveCtx, tool, d.Ctx.GetGit())
+				parentDevfileObj, err = parseFromURI(parent.ImportReference, &d.Ctx, resolveCtx, tool)
 			case parent.Id != "":
 				parentDevfileObj, err = parseFromRegistry(parent.ImportReference, resolveCtx, tool)
 			case parent.Kubernetes != nil:
@@ -336,7 +336,7 @@ func parseParentAndPlugin(d DevfileObj, resolveCtx *resolutionContextTree, tool 
 			var pluginDevfileObj DevfileObj
 			switch {
 			case plugin.Uri != "":
-				pluginDevfileObj, err = parseFromURI(plugin.ImportReference, &d.Ctx, resolveCtx, tool, d.Ctx.GetGit())
+				pluginDevfileObj, err = parseFromURI(plugin.ImportReference, &d.Ctx, resolveCtx, tool)
 			case plugin.Id != "":
 				pluginDevfileObj, err = parseFromRegistry(plugin.ImportReference, resolveCtx, tool)
 			case plugin.Kubernetes != nil:
@@ -395,15 +395,20 @@ func parseParentAndPlugin(d DevfileObj, resolveCtx *resolutionContextTree, tool 
 	return nil
 }
 
+//func parseFromURI(importReference v1.ImportReference, curDevfileCtx devfileCtx.IDevfileCtx, resolveCtx *resolutionContextTree, tool resolverTools) (DevfileObj, error) {
+//	//gitUrl := &devfileCtx.GitUrl{
+//	//	IGitUrl:    curDevfileCtx.GetGit().IGitUrl,
+//	//}
+//	gitUrl := curDevfileCtx.GetGit()
+//	return parseFromURIWithGit(importReference, curDevfileCtx, resolveCtx, tool, gitUrl)
+//}
+
 func parseFromURI(importReference v1.ImportReference, curDevfileCtx devfileCtx.IDevfileCtx, resolveCtx *resolutionContextTree, tool resolverTools) (DevfileObj, error) {
-	//gitUrl := &devfileCtx.GitUrl{
-	//	IGitUrl:    curDevfileCtx.GetGit().IGitUrl,
-	//}
-	gitUrl := curDevfileCtx.GetGit()
+	gitUrl := &git.Url{}
 	return parseFromURIWithGit(importReference, curDevfileCtx, resolveCtx, tool, gitUrl)
 }
 
-func parseFromURIWithGit(importReference v1.ImportReference, curDevfileCtx devfileCtx.IDevfileCtx, resolveCtx *resolutionContextTree, tool resolverTools, g git.Url) (DevfileObj, error) {
+func parseFromURIWithGit(importReference v1.ImportReference, curDevfileCtx devfileCtx.IDevfileCtx, resolveCtx *resolutionContextTree, tool resolverTools, g git.IGitUrl) (DevfileObj, error) {
 	uri := importReference.Uri
 	// validate URI
 	err := validation.ValidateURI(uri)
@@ -453,28 +458,19 @@ func parseFromURIWithGit(importReference v1.ImportReference, curDevfileCtx devfi
 			d.Ctx = devfileCtx.NewURLDevfileCtx(newUri)
 		}
 
-		gitUrl, err := g.NewGitUrl(newUri)
-		if gitUrl.IsGitProviderRepo() && gitUrl.IsFile {
-			destDir := path.Dir(curDevfileCtx.GetAbsPath())
-			err = getResourcesFromGit(gitUrl, destDir, tool.httpTimeout, token)
-			if err != nil {
-				return DevfileObj{}, err
-			}
-		}
-
-		//if git.IsGitProviderRepo(newUri) {
-		//	gitUrl, err := git.NewGitUrl(newUri)
+		//gitUrl, err := git.NewGitUrlWithURL(newUri)
+		//if err == nil && gitUrl.IsGitProviderRepo() && gitUrl.IsFile {
+		//	destDir := path.Dir(curDevfileCtx.GetAbsPath())
+		//	err = gitUrl.GetResourcesFromGit(destDir, tool.httpTimeout, token)
 		//	if err != nil {
 		//		return DevfileObj{}, err
 		//	}
-		//	if gitUrl.IsFile {
-		//		destDir := path.Dir(curDevfileCtx.GetAbsPath())
-		//		err = getResourcesFromGit(gitUrl, destDir, tool.httpTimeout, token)
-		//		if err != nil {
-		//			return DevfileObj{}, err
-		//		}
-		//	}
 		//}
+		destDir := path.Dir(curDevfileCtx.GetAbsPath())
+		err = g.DownloadResourcesToDest(newUri, destDir, tool.httpTimeout, token)
+		if err != nil {
+			return DevfileObj{}, err
+		}
 	}
 	importReference.Uri = newUri
 	newResolveCtx := resolveCtx.appendNode(importReference)
@@ -482,33 +478,33 @@ func parseFromURIWithGit(importReference v1.ImportReference, curDevfileCtx devfi
 	return populateAndParseDevfile(d, newResolveCtx, tool, true)
 }
 
-func getResourcesFromGit(g *git.Url, destDir string, httpTimeout *int, repoToken string) error {
-	stackDir, err := ioutil.TempDir(os.TempDir(), fmt.Sprintf("git-resources"))
-	if err != nil {
-		return fmt.Errorf("failed to create dir: %s, error: %v", stackDir, err)
-	}
-	defer os.RemoveAll(stackDir)
-
-	if !g.IsPublic(httpTimeout) {
-		err = g.SetToken(repoToken, httpTimeout)
-		if err != nil {
-			return err
-		}
-	}
-
-	err = g.CloneGitRepo(stackDir)
-	if err != nil {
-		return err
-	}
-
-	dir := path.Dir(path.Join(stackDir, g.Path))
-	err = util.CopyAllDirFiles(dir, destDir)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+//func getResourcesFromGit(g git.IGitUrl, destDir string, httpTimeout *int, repoToken string) error {
+//	stackDir, err := ioutil.TempDir(os.TempDir(), fmt.Sprintf("git-resources"))
+//	if err != nil {
+//		return fmt.Errorf("failed to create dir: %s, error: %v", stackDir, err)
+//	}
+//	defer os.RemoveAll(stackDir)
+//
+//	if !g.IsPublic(httpTimeout) {
+//		err = g.SetToken(repoToken, httpTimeout)
+//		if err != nil {
+//			return err
+//		}
+//	}
+//
+//	err = g.CloneGitRepo(stackDir)
+//	if err != nil {
+//		return err
+//	}
+//
+//	dir := path.Dir(path.Join(stackDir, g.GetPath()))
+//	err = util.CopyAllDirFiles(dir, destDir)
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
 
 func parseFromRegistry(importReference v1.ImportReference, resolveCtx *resolutionContextTree, tool resolverTools) (d DevfileObj, err error) {
 	id := importReference.Id

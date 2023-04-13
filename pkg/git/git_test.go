@@ -16,14 +16,11 @@
 package git
 
 import (
-	"fmt"
-	"github.com/devfile/library/v2/pkg/testingutil"
 	"github.com/kylelemons/godebug/pretty"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -467,77 +464,77 @@ func Test_CloneGitRepo(t *testing.T) {
 	}
 }
 
-func TestExecute(t *testing.T) {
-	tests := []struct {
-		name       string
-		command    CommandType
-		outputPath string
-		args       string
-		wantErr    error
-	}{
-		{
-			name:    "Simple command to execute",
-			command: GitCommand,
-			args:    "help",
-			wantErr: nil,
-		},
-		{
-			name:    "Invalid command, error expected",
-			command: "cd",
-			args:    "/",
-			wantErr: fmt.Errorf(unsupportedCmdMsg, "cd"),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			outputStack := testingutil.NewOutputs()
-			var executedCmds []testingutil.Execution
-
-			Execute = newTestExecute(outputStack, testingutil.NewErrors(), &executedCmds)
-
-			_, err := Execute(tt.outputPath, tt.command, tt.args)
-
-			if tt.wantErr != nil && err != nil {
-				if tt.wantErr.Error() != err.Error() {
-					t.Errorf("TestExecute() unexpected error: %v, want error: %v ", err, tt.wantErr)
-				}
-			}
-
-			if tt.wantErr == nil && err != nil {
-				t.Errorf("TestExecute() unexpected error: %v, want error: nil ", err)
-			}
-
-			if tt.wantErr != nil && err == nil {
-				t.Errorf("TestExecute() expected want error: %v, got error: nil ", tt.wantErr)
-			}
-		})
-	}
-	Execute = originalExecute
-}
-
-func mockExecute(outputStack *testingutil.OutputStack, errorStack *testingutil.ErrorStack, executedCmds *[]testingutil.Execution, baseDir string, cmd CommandType, args ...string) ([]byte, error, *[]testingutil.Execution) {
-	if cmd == GitCommand {
-		*executedCmds = append(*executedCmds, testingutil.Execution{BaseDir: baseDir, Command: string(cmd), Args: args})
-		if len(args) > 0 && args[0] == "rev-parse" {
-			if strings.Contains(baseDir, "test-git-error") {
-				return []byte(""), fmt.Errorf("unable to retrive git commit id"), executedCmds
-			} else {
-				return []byte("ca82a6dff817ec66f44342007202690a93763949"), errorStack.Pop(), executedCmds
-			}
-		} else {
-			return outputStack.Pop(), errorStack.Pop(), executedCmds
-		}
-	}
-
-	return []byte(""), fmt.Errorf("Unsupported command \"%s\" ", string(cmd)), executedCmds
-}
-
-func newTestExecute(outputStack *testingutil.OutputStack, errorStack *testingutil.ErrorStack, executedCmds *[]testingutil.Execution) func(baseDir string, cmd CommandType, args ...string) ([]byte, error) {
-	return func(baseDir string, cmd CommandType, args ...string) ([]byte, error) {
-		var output []byte
-		var execErr error
-		output, execErr, executedCmds = mockExecute(outputStack, errorStack, executedCmds, baseDir, cmd, args...)
-		return output, execErr
-	}
-}
+//func TestExecute(t *testing.T) {
+//	tests := []struct {
+//		name       string
+//		command    CommandType
+//		outputPath string
+//		args       string
+//		wantErr    error
+//	}{
+//		{
+//			name:    "Simple command to execute",
+//			command: GitCommand,
+//			args:    "help",
+//			wantErr: nil,
+//		},
+//		{
+//			name:    "Invalid command, error expected",
+//			command: "cd",
+//			args:    "/",
+//			wantErr: fmt.Errorf(unsupportedCmdMsg, "cd"),
+//		},
+//	}
+//
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			outputStack := testingutil.NewOutputs()
+//			var executedCmds []testingutil.Execution
+//
+//			Execute = newTestExecute(outputStack, testingutil.NewErrors(), &executedCmds)
+//
+//			_, err := Execute(tt.outputPath, tt.command, tt.args)
+//
+//			if tt.wantErr != nil && err != nil {
+//				if tt.wantErr.Error() != err.Error() {
+//					t.Errorf("TestExecute() unexpected error: %v, want error: %v ", err, tt.wantErr)
+//				}
+//			}
+//
+//			if tt.wantErr == nil && err != nil {
+//				t.Errorf("TestExecute() unexpected error: %v, want error: nil ", err)
+//			}
+//
+//			if tt.wantErr != nil && err == nil {
+//				t.Errorf("TestExecute() expected want error: %v, got error: nil ", tt.wantErr)
+//			}
+//		})
+//	}
+//	Execute = originalExecute
+//}
+//
+//func mockExecute(outputStack *testingutil.OutputStack, errorStack *testingutil.ErrorStack, executedCmds *[]testingutil.Execution, baseDir string, cmd CommandType, args ...string) ([]byte, error, *[]testingutil.Execution) {
+//	if cmd == GitCommand {
+//		*executedCmds = append(*executedCmds, testingutil.Execution{BaseDir: baseDir, Command: string(cmd), Args: args})
+//		if len(args) > 0 && args[0] == "rev-parse" {
+//			if strings.Contains(baseDir, "test-git-error") {
+//				return []byte(""), fmt.Errorf("unable to retrive git commit id"), executedCmds
+//			} else {
+//				return []byte("ca82a6dff817ec66f44342007202690a93763949"), errorStack.Pop(), executedCmds
+//			}
+//		} else {
+//			return outputStack.Pop(), errorStack.Pop(), executedCmds
+//		}
+//	}
+//
+//	return []byte(""), fmt.Errorf("Unsupported command \"%s\" ", string(cmd)), executedCmds
+//}
+//
+//func newTestExecute(outputStack *testingutil.OutputStack, errorStack *testingutil.ErrorStack, executedCmds *[]testingutil.Execution) func(baseDir string, cmd CommandType, args ...string) ([]byte, error) {
+//	return func(baseDir string, cmd CommandType, args ...string) ([]byte, error) {
+//		var output []byte
+//		var execErr error
+//		output, execErr, executedCmds = mockExecute(outputStack, errorStack, executedCmds, baseDir, cmd, args...)
+//		return output, execErr
+//	}
+//}

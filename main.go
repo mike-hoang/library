@@ -28,11 +28,30 @@ import (
 )
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "updateSchema" {
-		ReplaceSchemaFile()
-	} else {
-		parserTest()
+	parsePrivate()
+	//if len(os.Args) > 1 && os.Args[1] == "updateSchema" {
+	//	ReplaceSchemaFile()
+	//} else if os.Args[1] == "no" {
+	//	parserTest()
+	//}
+}
+
+func parsePrivate() {
+	args := parser.ParserArgs{
+		//URL: "https://github.com/mike-hoang/private-repo-example/blob/main/parent/devfile.yaml",
+		//URL: "https://github.com/mike-hoang/private-repo-example/blob/main/devfile.yaml",
+		URL:   "https://github.com/mike-hoang/private-repo-example/blob/main/p/devfile.yaml",
+		Token: "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",
 	}
+	//args := parser.ParserArgs{
+	//	URL: "https://github.com/devfile/registry/blob/main/stacks/go/2.0.0/devfile.yaml",
+	//	//Token: "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",
+	//}
+	devfile, _, _ := devfilepkg.ParseDevfileAndValidate(args)
+	dString := devfile.Ctx.GetDevfileContent()
+	//fmt.Println("ctx: ", devfile.Ctx.GetToken())
+	fmt.Println("devfile: ", string(dString[:]))
+
 }
 
 func parserTest() {

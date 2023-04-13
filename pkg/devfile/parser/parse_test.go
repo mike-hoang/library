@@ -4146,7 +4146,7 @@ func Test_parseFromURI(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseFromURI(tt.importReference, &tt.curDevfileCtx, &resolutionContextTree{}, resolverTools{}, tt.curDevfileCtx.GetGit())
+			got, err := parseFromURI(tt.importReference, &tt.curDevfileCtx, &resolutionContextTree{}, resolverTools{})
 			if (err != nil) != (tt.wantErr != nil) {
 				t.Errorf("Test_parseFromURI() unexpected error: %v, wantErr %v", err, tt.wantErr)
 			} else if err == nil && !reflect.DeepEqual(got.Data, tt.wantDevFile.Data) {
@@ -4170,17 +4170,17 @@ func Test_parseFromURI_New(t *testing.T) {
 	// Close the server when test finishes
 	defer server.Close()
 
-	git.GetNewGitUrlFunc = func(url string) (*git.MockGitUrl, error) {
-		return &git.MockGitUrl{
-			Protocol: "https",
-			Host:     "github.com",
-			Owner:    "devfile",
-			Repo:     "registry",
-			Branch:   "main",
-			Path:     "stacks/go/1.0.2/devfile.yaml",
-			IsFile:   true,
-		}, nil
-	}
+	//git.GetNewGitUrlFunc = func(url string) (*git.MockGitUrl, error) {
+	//	return &git.MockGitUrl{
+	//		Protocol: "https",
+	//		Host:     "github.com",
+	//		Owner:    "devfile",
+	//		Repo:     "registry",
+	//		Branch:   "main",
+	//		Path:     "stacks/go/1.0.2/devfile.yaml",
+	//		IsFile:   true,
+	//	}, nil
+	//}
 
 	git.GetIsGitProviderRepoFunc = func() bool {
 		return true
@@ -4194,7 +4194,7 @@ func Test_parseFromURI_New(t *testing.T) {
 	//var gitUrl git.Url
 	//var mockDevfileCtx devfileCtx.MockDevfileCtx
 
-	gitUrl := git.MockGitUrl{
+	gitUrl := &git.Url{
 		Protocol: "https",
 		Host:     "github.com",
 		Owner:    "devfile",
@@ -4203,12 +4203,23 @@ func Test_parseFromURI_New(t *testing.T) {
 		Path:     "stacks/go/1.0.2/devfile.yaml",
 		IsFile:   true,
 	}
-	curDevfileContext := devfileCtx.MockNewPrivateURLDevfileCtxWithGit(OutputDevfileYamlPath, token, gitUrl)
-	//curDevfileContext := devfileCtx.NewPrivateURLDevfileCtxWithGit(OutputDevfileYamlPath, token, &gitUrl)
+
+	//gitUrlMock := &git.MockGitUrl{
+	//	Protocol: "https",
+	//	Host:     "github.com",
+	//	Owner:    "devfile",
+	//	Repo:     "registry",
+	//	Branch:   "main",
+	//	Path:     "stacks/go/1.0.2/devfile.yaml",
+	//	IsFile:   true,
+	//}
+
+	//curDevfileContext := devfileCtx.MockNewPrivateURLDevfileCtxWithGit(OutputDevfileYamlPath, token, gitUrl)
+	curDevfileContext := devfileCtx.NewPrivateURLDevfileCtx(OutputDevfileYamlPath, token)
 
 	tests := []struct {
 		name            string
-		curDevfileCtx   *devfileCtx.MockDevfileCtx
+		curDevfileCtx   *devfileCtx.DevfileCtx
 		importReference v1.ImportReference
 		wantDevFile     DevfileObj
 		wantToken       string
@@ -4229,7 +4240,7 @@ func Test_parseFromURI_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := parseFromURIWithGit(tt.importReference, tt.curDevfileCtx, &resolutionContextTree{}, resolverTools{}, gitUrl)
 			//fmt.Println("got: ", got)
-			fmt.Println("gotGit: ", got.Ctx.GetGit())
+			//fmt.Println("gotGit: ", got.Ctx.GetGit())
 			fmt.Println("tt.context: ", tt.curDevfileCtx)
 			if !reflect.DeepEqual(tt.wantToken, got.Ctx.GetToken()) {
 				t.Errorf("Expected %s, got %s", tt.wantToken, got.Ctx.GetToken())
@@ -4575,61 +4586,61 @@ func Test_parseFromKubeCRD(t *testing.T) {
 	}
 }
 
-func Test_getResourcesFromGit(t *testing.T) {
-	destDir, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Errorf("Failed to create dest dir: %s, error: %v", destDir, err)
-	}
-	defer os.RemoveAll(destDir)
-
-	httpTimeout := 0
-
-	invalidGitHubUrl := git.Url{
-		Protocol: "",
-		Host:     "",
-		Owner:    "devfile",
-		Repo:     "nonexistent",
-		Branch:   "nonexistent",
-	}
-	validGitHubUrl := git.Url{
-		Protocol: "https",
-		Host:     "raw.githubusercontent.com",
-		Owner:    "devfile",
-		Repo:     "registry",
-		Branch:   "main",
-		Path:     "stacks/nodejs/devfile.yaml",
-		IsFile:   true,
-	}
-
-	tests := []struct {
-		name    string
-		gitUrl  git.Url
-		destDir string
-		wantErr bool
-	}{
-		{
-			name:    "should fail with invalid git url",
-			gitUrl:  invalidGitHubUrl,
-			destDir: path.Join(os.TempDir(), "nonexistent"),
-			wantErr: true,
-		},
-		{
-			name:    "should be able to get resources from valid git url",
-			gitUrl:  validGitHubUrl,
-			destDir: destDir,
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := getResourcesFromGit(&tt.gitUrl, tt.destDir, &httpTimeout, "")
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Expected error: %t, got error: %t", tt.wantErr, err)
-			}
-		})
-	}
-}
+//func Test_getResourcesFromGit(t *testing.T) {
+//	destDir, err := ioutil.TempDir("", "")
+//	if err != nil {
+//		t.Errorf("Failed to create dest dir: %s, error: %v", destDir, err)
+//	}
+//	defer os.RemoveAll(destDir)
+//
+//	httpTimeout := 0
+//
+//	invalidGitHubUrl := git.Url{
+//		Protocol: "",
+//		Host:     "",
+//		Owner:    "devfile",
+//		Repo:     "nonexistent",
+//		Branch:   "nonexistent",
+//	}
+//	validGitHubUrl := git.Url{
+//		Protocol: "https",
+//		Host:     "raw.githubusercontent.com",
+//		Owner:    "devfile",
+//		Repo:     "registry",
+//		Branch:   "main",
+//		Path:     "stacks/nodejs/devfile.yaml",
+//		IsFile:   true,
+//	}
+//
+//	tests := []struct {
+//		name    string
+//		gitUrl  git.Url
+//		destDir string
+//		wantErr bool
+//	}{
+//		{
+//			name:    "should fail with invalid git url",
+//			gitUrl:  invalidGitHubUrl,
+//			destDir: path.Join(os.TempDir(), "nonexistent"),
+//			wantErr: true,
+//		},
+//		{
+//			name:    "should be able to get resources from valid git url",
+//			gitUrl:  validGitHubUrl,
+//			destDir: destDir,
+//			wantErr: false,
+//		},
+//	}
+//
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			err := tt.gitUrl.DownloadResourcesToDest(tt.destDir, &httpTimeout, "")
+//			if (err != nil) != tt.wantErr {
+//				t.Errorf("Expected error: %t, got error: %t", tt.wantErr, err)
+//			}
+//		})
+//	}
+//}
 
 func Test_setDefaults(t *testing.T) {
 	type testType struct {

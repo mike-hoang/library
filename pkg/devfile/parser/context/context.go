@@ -17,7 +17,6 @@ package parser
 
 import (
 	"fmt"
-	"github.com/devfile/library/v2/pkg/git"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -54,7 +53,7 @@ type DevfileCtx struct {
 	// todo: use token from git interface
 
 	// git is an interface used for git urls
-	git git.Url
+	//git git.Url
 
 	// filesystem for devfile
 	fs filesystem.Filesystem
@@ -62,14 +61,6 @@ type DevfileCtx struct {
 	// devfile kubernetes components has been converted from uri to inlined in memory
 	convertUriToInlined bool
 }
-
-//
-//func NewGitUrl(git git.IGitUrl) GitUrl {
-//	return GitUrl{
-//		IGitUrl:    git,
-//		MockGitUrl: nil,
-//	}
-//}
 
 // NewDevfileCtx returns a new DevfileCtx type object
 func NewDevfileCtx(path string) DevfileCtx {
@@ -81,30 +72,35 @@ func NewDevfileCtx(path string) DevfileCtx {
 
 // NewURLDevfileCtx returns a new DevfileCtx type object
 func NewURLDevfileCtx(url string) DevfileCtx {
-	var git git.Url = git.Url{}
-	return NewURLDevfileCtxWithGit(url, git)
-}
-
-func NewURLDevfileCtxWithGit(url string, git git.Url) DevfileCtx {
+	//var git = git.Url{}
+	//return NewURLDevfileCtxWithGit(url, git)
 	return DevfileCtx{
 		url: url,
-		git: git,
 	}
 }
+
+//func NewURLDevfileCtxWithGit(url string, git git.Url) DevfileCtx {
+//	return DevfileCtx{
+//		url: url,
+//		git: git,
+//	}
+//}
 
 // NewPrivateURLDevfileCtx returns a new DevfileCtx type object
 func NewPrivateURLDevfileCtx(url string, token string) DevfileCtx {
-	var git git.Url = git.Url{}
-	return NewPrivateURLDevfileCtxWithGit(url, token, git)
-}
-
-func NewPrivateURLDevfileCtxWithGit(url string, token string, git git.Url) DevfileCtx {
 	return DevfileCtx{
 		url:   url,
 		token: token,
-		git:   git,
 	}
 }
+
+//func NewPrivateURLDevfileCtxWithGit(url string, token string, git git.Url) DevfileCtx {
+//	return DevfileCtx{
+//		url:   url,
+//		token: token,
+//		git:   git,
+//	}
+//}
 
 // NewByteContentDevfileCtx set devfile content from byte data and returns a new DevfileCtx type object and error
 func NewByteContentDevfileCtx(data []byte) (d DevfileCtx, err error) {
@@ -177,9 +173,9 @@ func (d *DevfileCtx) Validate() error {
 }
 
 // GetGit returns the git object
-func (d *DevfileCtx) GetGit() git.Url {
-	return d.git
-}
+//func (d *DevfileCtx) GetGit() git.Url {
+//	return d.git
+//}
 
 // GetAbsPath func returns current devfile absolute path
 func (d *DevfileCtx) GetAbsPath() string {

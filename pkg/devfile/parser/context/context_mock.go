@@ -56,7 +56,7 @@ type MockDevfileCtx struct {
 	// todo: use token from git interface
 
 	// git is an interface used for git urls
-	git git.MockGitUrl
+	//git git.MockGitUrl
 
 	// filesystem for devfile
 	fs filesystem.Filesystem
@@ -66,38 +66,35 @@ type MockDevfileCtx struct {
 }
 
 // MockNewURLDevfileCtx NewURLDevfileCtx returns a new DevfileCtx type object
-func (d *MockDevfileCtx) MockNewURLDevfileCtx(url string) MockDevfileCtx {
+func MockNewURLDevfileCtx(url string) MockDevfileCtx {
 	var git = git.MockGitUrl{}
 	return MockNewURLDevfileCtxWithGit(url, git)
 }
 
-func MockNewURLDevfileCtxWithGit(url string, git git.MockGitUrl) MockDevfileCtx {
+func MockNewURLDevfileCtxWithGit(url string, g git.MockGitUrl) MockDevfileCtx {
 	return MockDevfileCtx{
 		url: url,
-		git: git,
+		//git:    g,
+		//gitUrl: git.MockGitUrl{},
 	}
 }
 
+//func (d *MockDevfileCtx) GetGitUrl() git.MockGitUrl {
+//	return d.gitUrl
+//}
+
 func (d *MockDevfileCtx) NewURLDevfileCtxWithGit(url string, git git.MockGitUrl) MockDevfileCtx {
-	//gitUrl := GitUrl{
-	//	IGitUrl:    nil,
-	//	MockGitUrl: git,
-	//}
 	return MockDevfileCtx{
 		url: url,
-		git: git,
+		//git: git,
 	}
 }
 
 func MockNewPrivateURLDevfileCtxWithGit(url string, token string, git git.MockGitUrl) MockDevfileCtx {
-	//gitUrl := GitUrl{
-	//	IGitUrl:    nil,
-	//	MockGitUrl: git,
-	//}
 	return MockDevfileCtx{
 		url:   url,
 		token: token,
-		git:   git,
+		//git:   git,
 	}
 }
 
@@ -162,22 +159,22 @@ func (d *MockDevfileCtx) Validate() error {
 	return d.ValidateDevfileSchema()
 }
 
-// GetGit returns the git object
+//GetGit returns the git object
 //func (d *MockDevfileCtx) GetGit() git.MockGitUrl {
 //	return d.git
 //}
 
-func (d *MockDevfileCtx) GetGit() git.Url {
-	return git.Url{
-		Protocol: d.git.Protocol,
-		Host:     d.git.Host,
-		Owner:    d.git.Owner,
-		Repo:     d.git.Repo,
-		Branch:   d.git.Branch,
-		Path:     d.git.Path,
-		IsFile:   d.git.IsFile,
-	}
-}
+//func (d *MockDevfileCtx) GetGit() git.MockGitUrl {
+//	return git.MockGitUrl{
+//		Protocol: d.Git.Protocol,
+//		Host:     d.Git.Host,
+//		Owner:    d.Git.Owner,
+//		Repo:     d.Git.Repo,
+//		Branch:   d.Git.Branch,
+//		Path:     d.Git.Path,
+//		IsFile:   d.Git.IsFile,
+//	}
+//}
 
 // GetAbsPath func returns current devfile absolute path
 func (d *MockDevfileCtx) GetAbsPath() string {

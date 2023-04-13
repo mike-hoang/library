@@ -1098,21 +1098,21 @@ func DownloadInMemory(params HTTPRequestParams) ([]byte, error) {
 		ResponseHeaderTimeout: HTTPRequestResponseTimeout,
 	}, Timeout: HTTPRequestResponseTimeout}
 
-	var gitUrl = git.Url{}
-	var g *git.Url
+	//var gitUrl = &git.Url{}
+	var g git.IGitUrl
 	var err error
 
 	if IsGitProviderRepo(params.URL) {
-		g, err = gitUrl.NewGitUrl(params.URL)
+		g, err = git.NewGitUrlWithURL(params.URL)
 		if err != nil {
 			return nil, errors.Errorf("failed to parse git repo. error: %v", err)
 		}
 	}
 
-	return downloadInMemoryWithClient(params, httpClient, *g)
+	return downloadInMemoryWithClient(params, httpClient, g)
 }
 
-func downloadInMemoryWithClient(params HTTPRequestParams, httpClient HTTPClient, g git.Url) ([]byte, error) {
+func downloadInMemoryWithClient(params HTTPRequestParams, httpClient HTTPClient, g git.IGitUrl) ([]byte, error) {
 	var url string
 	url = params.URL
 	req, err := http.NewRequest("GET", url, nil)

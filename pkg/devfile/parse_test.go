@@ -420,6 +420,7 @@ schemaVersion: 2.2.0
 
 // TestParseDevfileAndValidate_PrivateTokens checks that tokens are passed along from the parser args
 // to nested parent devfiles
+// todo: remove
 func TestParseDevfileAndValidate_PrivateTokens(t *testing.T) {
 	nestedParent := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		_, err := rw.Write([]byte("schemaVersion: 2.2.0"))
@@ -493,7 +494,7 @@ func TestParseDevfileAndValidate_PrivateTokens(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotD, _, err := ParseDevfileAndValidate(tt.args.args)
-			fmt.Println("gotD: ", string(gotD.Ctx.GetDevfileContent()))
+			//fmt.Println("gotD: ", string(gotD.Ctx.GetDevfileContent()))
 			if !reflect.DeepEqual(tt.wantToken, gotD.Ctx.GetToken()) {
 				t.Errorf("Expected %s, got %s", tt.wantToken, gotD.Ctx.GetToken())
 			} else if err != nil {

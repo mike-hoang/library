@@ -17,8 +17,11 @@ package git
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"path"
 )
 
 var (
@@ -58,6 +61,32 @@ type MockGitUrl struct {
 	IsFile   bool   // defines if the URL points to a file in the repo
 }
 
+func (m *MockGitUrl) NewGitUrlWithURL(url string) (IGitUrl, error) {
+	fmt.Println("here!! mocked url ")
+	return &MockGitUrl{
+		Protocol: "https",
+		Host:     "github.com",
+		Owner:    "devfile",
+		Repo:     "registry",
+		Branch:   "main",
+		Path:     "stacks/go/1.0.2/devfile.yaml",
+		IsFile:   true,
+	}, nil
+}
+
+func NewMockGitUrlWithURL(url string) (*MockGitUrl, error) {
+	fmt.Println("here!! mocked url ")
+	return &MockGitUrl{
+		Protocol: "https",
+		Host:     "github.com",
+		Owner:    "devfile",
+		Repo:     "registry",
+		Branch:   "main",
+		Path:     "stacks/go/1.0.2/devfile.yaml",
+		IsFile:   true,
+	}, nil
+}
+
 var mockExecute = func(baseDir string, cmd CommandType, args ...string) ([]byte, error) {
 	if cmd == GitCommand {
 		fmt.Println(url.Parse(args[1]))
@@ -69,6 +98,66 @@ var mockExecute = func(baseDir string, cmd CommandType, args ...string) ([]byte,
 	}
 
 	return []byte(""), fmt.Errorf(unsupportedCmdMsg, string(cmd))
+}
+
+func (m *MockGitUrl) DownloadResourcesToDest(url string, destDir string, httpTimeout *int, token string) error {
+	gitUrl, err := NewMockGitUrlWithURL(url)
+	if err == nil && gitUrl.IsGitProviderRepo() && gitUrl.IsFile {
+		stackDir, err := ioutil.TempDir(os.TempDir(), fmt.Sprintf("git-resources"))
+		if err != nil {
+			return fmt.Errorf("failed to create dir: %s, error: %v", stackDir, err)
+		}
+		defer os.RemoveAll(stackDir)
+
+		if !gitUrl.IsPublic(httpTimeout) {
+			err = m.SetToken(token, httpTimeout)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = gitUrl.CloneGitRepo(stackDir)
+		if err != nil {
+			return err
+		}
+
+		dir := path.Dir(path.Join(stackDir, gitUrl.GetPath()))
+		err = CopyAllDirFiles(dir, destDir)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *MockGitUrl) GetResourcesFromGit(destDir string, httpTimeout *int, repoToken string) error {
+	stackDir, err := ioutil.TempDir(os.TempDir(), fmt.Sprintf("git-resources"))
+	if err != nil {
+		return fmt.Errorf("failed to create dir: %s, error: %v", stackDir, err)
+	}
+	defer os.RemoveAll(stackDir)
+
+	if !m.IsPublic(httpTimeout) {
+		err = m.SetToken(repoToken, httpTimeout)
+		if err != nil {
+			return err
+		}
+	}
+
+	fmt.Println("GetResourcesFromGit: Mock!")
+
+	err = m.CloneGitRepo(stackDir)
+	if err != nil {
+		return err
+	}
+
+	dir := path.Dir(path.Join(stackDir, m.GetPath()))
+	err = CopyAllDirFiles(dir, destDir)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func MockNewGitUrl(url string) (*MockGitUrl, error) {
@@ -85,44 +174,35 @@ func MockNewGitUrl(url string) (*MockGitUrl, error) {
 }
 
 func (m *MockGitUrl) CloneGitRepo(destDir string) error {
+	//func (m *MockGitUrl) CloneGitRepo(destDir string) error {
 	//return GetCloneGitRepoFunc(destDir)
-	fmt.Println("test")
+	fmt.Println("test: mock clone")
 	exist := CheckPathExists(destDir)
 	if !exist {
 		return fmt.Errorf("failed to clone repo, destination directory: '%s' does not exists", destDir)
 	}
 
-	host := m.Host
+	host := m.GetHost()
 	if host == RawGitHubHost {
 		host = GitHubHost
 	}
 
 	var repoUrl string
-	if m.token == "" {
-		repoUrl = fmt.Sprintf("%s://%s/%s/%s.git", m.Protocol, host, m.Owner, m.Repo)
+	if m.GetToken() == "" {
+		repoUrl = fmt.Sprintf("%s://%s/%s/%s.git", m.GetProtocol(), host, m.GetOwner(), m.GetRepo())
 	} else {
-		repoUrl = fmt.Sprintf("%s://token:%s@%s/%s/%s.git", m.Protocol, m.token, host, m.Owner, m.Repo)
-		if m.Host == BitbucketHost {
-			repoUrl = fmt.Sprintf("%s://x-token-auth:%s@%s/%s/%s.git", m.Protocol, m.token, host, m.Owner, m.Repo)
+		repoUrl = fmt.Sprintf("%s://token:%s@%s/%s/%s.git", m.GetProtocol(), m.GetToken(), host, m.GetOwner(), m.GetRepo())
+		if m.GetHost() == BitbucketHost {
+			repoUrl = fmt.Sprintf("%s://x-token-auth:%s@%s/%s/%s.git", m.GetProtocol(), m.GetToken(), host, m.GetOwner(), m.GetRepo())
 		}
 	}
 
-	//c, err := execute("git", "clone", repoUrl, destDir)
-	c, err := execute(destDir, "git", "clone", repoUrl)
+	c, err := mockExecute(destDir, "git", "clone", repoUrl)
 	fmt.Println("[clone repo] c: ", string(c))
 	fmt.Println("[clone repo] err: ", err)
 
-	///* #nosec G204 -- user input is processed into an expected format for the git clone command */
-	//c := exec.Command("git", "clone", repoUrl, destDir)
-	//c.Dir = destDir
-	//
-	//// set env to skip authentication prompt and directly error out
-	//c.Env = os.Environ()
-	//c.Env = append(c.Env, "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=/bin/echo")
-	//
-	//_, err := c.CombinedOutput()
 	if err != nil {
-		if m.token == "" {
+		if m.GetToken() == "" {
 			return fmt.Errorf("failed to clone repo without a token, ensure that a token is set if the repo is private. error: %v", err)
 		} else {
 			return fmt.Errorf("failed to clone repo with token, ensure that the url and token is correct. error: %v", err)
@@ -141,13 +221,56 @@ func (m *MockGitUrl) GitRawFileAPI() string {
 }
 
 func (m *MockGitUrl) SetToken(token string, httpTimeout *int) error {
-	return GetSetTokenFunc(token, httpTimeout)
+	//return GetSetTokenFunc(token, httpTimeout)
+	m.token = token
+	return nil
 }
 
 func (m *MockGitUrl) IsPublic(httpTimeout *int) bool {
-	return GetIsPublicFunc(httpTimeout)
+	//return GetIsPublicFunc(httpTimeout)
+	return false
 }
 
 func (m *MockGitUrl) IsGitProviderRepo() bool {
 	return GetIsGitProviderRepoFunc()
+}
+
+func (m *MockGitUrl) GetProtocol() string {
+	//TODO implement me
+	return m.Protocol
+}
+
+func (m *MockGitUrl) GetHost() string {
+	//TODO implement me
+	return m.Host
+}
+
+func (m *MockGitUrl) GetOwner() string {
+	//TODO implement me
+	return m.Owner
+}
+
+func (m *MockGitUrl) GetRepo() string {
+	//TODO implement me
+	return m.Repo
+}
+
+func (m *MockGitUrl) GetBranch() string {
+	//TODO implement me
+	return m.Branch
+}
+
+func (m *MockGitUrl) GetPath() string {
+	//TODO implement me
+	return m.Path
+}
+
+func (m *MockGitUrl) GetToken() string {
+	//TODO implement me
+	return m.token
+}
+
+func (m *MockGitUrl) GetIsFile() bool {
+	//TODO implement me
+	return m.IsFile
 }
