@@ -49,8 +49,6 @@ var isTrue bool = true
 var isFalse bool = false
 var apiSchemaVersions = []string{data.APISchemaVersion200.String(), data.APISchemaVersion210.String(), data.APISchemaVersion220.String()}
 
-//var originalExecute = git.execute
-
 var defaultDiv testingutil.DockerImageValues = testingutil.DockerImageValues{
 	ImageName:    "image:latest",
 	Uri:          "/local/image",
@@ -2817,7 +2815,6 @@ func Test_parseParentAndPluginFromURI(t *testing.T) {
 				parent.Uri = parentTestServer.URL
 
 				tt.args.devFileObj.Data.SetParent(parent)
-				//tt.args.devFileObj.Ctx.Git = &git.MockGitUrl{}
 			}
 			if !reflect.DeepEqual(tt.pluginDevfile, DevfileObj{}) {
 
@@ -4208,6 +4205,16 @@ func Test_parseFromURI_GitResources(t *testing.T) {
 
 	httpTimeoutPrivate := 1
 
+	publicGitUrl := &git.MockGitUrl{
+		Protocol: "https",
+		Host:     "raw.githubusercontent.com",
+		Owner:    "devfile",
+		Repo:     "library",
+		Branch:   "main",
+		Path:     "devfile.yaml",
+		IsFile:   true,
+	}
+
 	privateBitbucketGitUrl := &git.MockGitUrl{
 		Protocol: "https",
 		Host:     "bitbucket.org",
@@ -4217,6 +4224,7 @@ func Test_parseFromURI_GitResources(t *testing.T) {
 		Path:     "stacks/go/1.0.2/devfile.yaml",
 		IsFile:   true,
 	}
+	privateBitbucketGitUrl.SetToken(validToken, &httpTimeoutPrivate)
 
 	privateGitUrl := &git.MockGitUrl{
 		Protocol: "https",
@@ -4245,6 +4253,18 @@ func Test_parseFromURI_GitResources(t *testing.T) {
 			name:          "private main devfile URL",
 			curDevfileCtx: &curDevfileContextWithValidToken,
 			gitUrl:        privateGitUrl,
+			timeout:       &httpTimeoutPrivate,
+			importReference: v1.ImportReference{
+				ImportReferenceUnion: v1.ImportReferenceUnion{
+					Uri: server.URL,
+				},
+			},
+			wantError: nil,
+		},
+		{
+			name:          "private main devfile Bitbucket URL",
+			curDevfileCtx: &curDevfileContextWithValidToken,
+			gitUrl:        privateBitbucketGitUrl,
 			timeout:       &httpTimeoutPrivate,
 			importReference: v1.ImportReference{
 				ImportReferenceUnion: v1.ImportReferenceUnion{
@@ -4290,16 +4310,16 @@ func Test_parseFromURI_GitResources(t *testing.T) {
 			wantError: fmt.Errorf("failed to clone repo with token, ensure that the url and token is correct"),
 		},
 		{
-			name:          "private main devfile without a token",
+			name:          "public main devfile without a token",
 			curDevfileCtx: &curDevfileContextWithoutToken,
-			gitUrl:        privateBitbucketGitUrl,
+			gitUrl:        publicGitUrl,
 			timeout:       &httpTimeoutPrivate,
 			importReference: v1.ImportReference{
 				ImportReferenceUnion: v1.ImportReferenceUnion{
 					Uri: server.URL,
 				},
 			},
-			wantError: fmt.Errorf("failed to clone repo without a token, ensure that a token is set if the repo is private"),
+			wantError: nil,
 		},
 	}
 

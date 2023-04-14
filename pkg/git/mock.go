@@ -69,21 +69,17 @@ var mockExecute = func(baseDir string, cmd CommandType, args ...string) ([]byte,
 	if cmd == GitCommand {
 		u, _ := url.Parse(args[1])
 		password, hasPassword := u.User.Password()
-		fmt.Println("pass: ", password)
-		fmt.Println("hasPassword: ", hasPassword)
 
 		if hasPassword {
 			switch password {
 			case "valid-token":
-				fmt.Println("output: test")
 				return []byte("test"), nil
 			default:
-				fmt.Println("output: empty")
 				return []byte(""), fmt.Errorf("not a valid token")
 			}
 		}
 
-		return []byte("not sure"), fmt.Errorf("error")
+		return []byte("test"), nil
 	}
 
 	return []byte(""), fmt.Errorf(unsupportedCmdMsg, string(cmd))
