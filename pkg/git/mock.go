@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
-	"path"
 )
 
 type MockGitUrl struct {
@@ -74,22 +73,29 @@ func (m *MockGitUrl) GetIsFile() bool {
 
 var mockExecute = func(baseDir string, cmd CommandType, args ...string) ([]byte, error) {
 	if cmd == GitCommand {
-		// todo: finish this implementation
-		// if token is found return no err
-		// else return err
-		fmt.Println(url.Parse(args[1]))
-		//c := exec.Command(string(cmd), args...)
-		//c.Dir = baseDir
-		//output, err := c.CombinedOutput()
-		output := []byte("test")
-		return output, nil
+		u, _ := url.Parse(args[1])
+		password, hasPassword := u.User.Password()
+		fmt.Println("pass: ", password)
+		fmt.Println("hasPassword: ", hasPassword)
+
+		if hasPassword {
+			switch password {
+			case "valid-token":
+				fmt.Println("output: test")
+				return []byte("test"), nil
+			default:
+				fmt.Println("output: empty")
+				return []byte(""), fmt.Errorf("not a valid token")
+			}
+		}
+
+		return []byte("not sure"), fmt.Errorf("error")
 	}
 
 	return []byte(""), fmt.Errorf(unsupportedCmdMsg, string(cmd))
 }
 
 func (m *MockGitUrl) CloneGitRepo(destDir string) error {
-	fmt.Println("test: mock clone")
 	exist := CheckPathExists(destDir)
 	if !exist {
 		return fmt.Errorf("failed to clone repo, destination directory: '%s' does not exists", destDir)
@@ -111,14 +117,14 @@ func (m *MockGitUrl) CloneGitRepo(destDir string) error {
 	}
 
 	_, err := mockExecute(destDir, "git", "clone", repoUrl, ".")
-	fmt.Println("m.Token: ", m.GetToken())
 	fmt.Println("[mock execute] repoUrl: ", repoUrl)
+	fmt.Println("[mock execute] error: ", err)
 
 	if err != nil {
 		if m.GetToken() == "" {
-			return fmt.Errorf("failed to clone repo without a token, ensure that a token is set if the repo is private. error: %v", err)
+			return fmt.Errorf("failed to clone repo without a token, ensure that a token is set if the repo is private")
 		} else {
-			return fmt.Errorf("failed to clone repo with token, ensure that the url and token is correct. error: %v", err)
+			return fmt.Errorf("failed to clone repo with token, ensure that the url and token is correct")
 		}
 	}
 
@@ -146,12 +152,6 @@ func (m *MockGitUrl) DownloadGitRepoResources(url string, destDir string, httpTi
 		if err != nil {
 			return err
 		}
-
-		dir := path.Dir(path.Join(stackDir, gitUrl.GetPath()))
-		err = CopyAllDirFiles(dir, destDir)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -162,7 +162,10 @@ func (m *MockGitUrl) SetToken(token string, httpTimeout *int) error {
 }
 
 func (m *MockGitUrl) IsPublic(httpTimeout *int) bool {
-	return false
+	if *httpTimeout != 0 {
+		return false
+	}
+	return true
 }
 
 func (m *MockGitUrl) GitRawFileAPI() string {

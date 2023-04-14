@@ -17,6 +17,7 @@ package parser
 
 import (
 	"fmt"
+	"github.com/devfile/library/v2/pkg/git"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -51,6 +52,9 @@ type DevfileCtx struct {
 	// token is a personal access token used with a private git repo URL
 	token string
 
+	// Git is an interface used for git urls
+	Git git.IGitUrl
+
 	// filesystem for devfile
 	fs filesystem.Filesystem
 
@@ -70,6 +74,7 @@ func NewDevfileCtx(path string) DevfileCtx {
 func NewURLDevfileCtx(url string) DevfileCtx {
 	return DevfileCtx{
 		url: url,
+		Git: &git.Url{},
 	}
 }
 
@@ -78,6 +83,7 @@ func NewPrivateURLDevfileCtx(url string, token string) DevfileCtx {
 	return DevfileCtx{
 		url:   url,
 		token: token,
+		Git:   &git.Url{},
 	}
 }
 

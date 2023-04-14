@@ -145,7 +145,6 @@ var execute = func(baseDir string, cmd CommandType, args ...string) ([]byte, err
 }
 
 func (g *Url) CloneGitRepo(destDir string) error {
-	fmt.Println("test: real clone")
 	exist := CheckPathExists(destDir)
 	if !exist {
 		return fmt.Errorf("failed to clone repo, destination directory: '%s' does not exists", destDir)
@@ -181,7 +180,6 @@ func (g *Url) CloneGitRepo(destDir string) error {
 
 func (g *Url) DownloadGitRepoResources(url string, destDir string, httpTimeout *int, token string) error {
 	gitUrl, err := NewGitUrlWithURL(url)
-	//gitUrl := g
 	if err != nil {
 		return err
 	}
