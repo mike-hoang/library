@@ -398,11 +398,6 @@ func parseParentAndPlugin(d DevfileObj, resolveCtx *resolutionContextTree, tool 
 	return nil
 }
 
-//func parseFromURI(importReference v1.ImportReference, curDevfileCtx devfileCtx.DevfileCtx, resolveCtx *resolutionContextTree, tool resolverTools) (DevfileObj, error) {
-//	gitUrl := &git.Url{}
-//	return parseFromURIWithGit(importReference, curDevfileCtx, resolveCtx, tool, gitUrl)
-//}
-
 func parseFromURI(importReference v1.ImportReference, curDevfileCtx devfileCtx.DevfileCtx, resolveCtx *resolutionContextTree, tool resolverTools) (DevfileObj, error) {
 	uri := importReference.Uri
 	// validate URI
