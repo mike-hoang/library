@@ -142,6 +142,7 @@ func ParseDevfile(args ParserArgs) (d DevfileObj, err error) {
 		context:          args.Context,
 		k8sClient:        args.K8sClient,
 		httpTimeout:      args.HTTPTimeout,
+		git:              d.Ctx.Git,
 	}
 
 	flattenedDevfile := true
@@ -195,6 +196,8 @@ type resolverTools struct {
 	k8sClient client.Client
 	// httpTimeout is the timeout value in seconds passed in from the client.
 	httpTimeout *int
+	// git is the interface used for git urls
+	git git.IGitUrl
 }
 
 func populateAndParseDevfile(d DevfileObj, resolveCtx *resolutionContextTree, tool resolverTools, flattenedDevfile bool) (DevfileObj, error) {
@@ -275,7 +278,7 @@ func parseParentAndPlugin(d DevfileObj, resolveCtx *resolutionContextTree, tool 
 			var parentDevfileObj DevfileObj
 			switch {
 			case parent.Uri != "":
-				parentDevfileObj, err = parseFromURI(parent.ImportReference, d.Ctx, resolveCtx, tool, d.Ctx.Git)
+				parentDevfileObj, err = parseFromURI(parent.ImportReference, d.Ctx, resolveCtx, tool)
 			case parent.Id != "":
 				parentDevfileObj, err = parseFromRegistry(parent.ImportReference, resolveCtx, tool)
 			case parent.Kubernetes != nil:
@@ -336,7 +339,7 @@ func parseParentAndPlugin(d DevfileObj, resolveCtx *resolutionContextTree, tool 
 			var pluginDevfileObj DevfileObj
 			switch {
 			case plugin.Uri != "":
-				pluginDevfileObj, err = parseFromURI(plugin.ImportReference, d.Ctx, resolveCtx, tool, d.Ctx.Git)
+				pluginDevfileObj, err = parseFromURI(plugin.ImportReference, d.Ctx, resolveCtx, tool)
 			case plugin.Id != "":
 				pluginDevfileObj, err = parseFromRegistry(plugin.ImportReference, resolveCtx, tool)
 			case plugin.Kubernetes != nil:
@@ -400,7 +403,7 @@ func parseParentAndPlugin(d DevfileObj, resolveCtx *resolutionContextTree, tool 
 //	return parseFromURIWithGit(importReference, curDevfileCtx, resolveCtx, tool, gitUrl)
 //}
 
-func parseFromURI(importReference v1.ImportReference, curDevfileCtx devfileCtx.DevfileCtx, resolveCtx *resolutionContextTree, tool resolverTools, g git.IGitUrl) (DevfileObj, error) {
+func parseFromURI(importReference v1.ImportReference, curDevfileCtx devfileCtx.DevfileCtx, resolveCtx *resolutionContextTree, tool resolverTools) (DevfileObj, error) {
 	uri := importReference.Uri
 	// validate URI
 	err := validation.ValidateURI(uri)
@@ -449,10 +452,9 @@ func parseFromURI(importReference v1.ImportReference, curDevfileCtx devfileCtx.D
 		} else {
 			d.Ctx = devfileCtx.NewURLDevfileCtx(newUri)
 		}
-		d.Ctx.Git = g
 
 		destDir := path.Dir(curDevfileCtx.GetAbsPath())
-		err = g.DownloadGitRepoResources(newUri, destDir, tool.httpTimeout, token)
+		err = tool.git.DownloadGitRepoResources(newUri, destDir, tool.httpTimeout, token)
 		if err != nil {
 			return DevfileObj{}, err
 		}

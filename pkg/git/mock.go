@@ -33,12 +33,6 @@ type MockGitUrl struct {
 	IsFile   bool   // defines if the URL points to a file in the repo
 }
 
-func MockNewGitUrlWithURL(url string) (*MockGitUrl, error) {
-	g, err := ParseGitUrl(url)
-	m := ConvertUrlToMockUrl(g)
-	return &m, err
-}
-
 func (m *MockGitUrl) GetProtocol() string {
 	return m.Protocol
 }
@@ -117,8 +111,6 @@ func (m *MockGitUrl) CloneGitRepo(destDir string) error {
 	}
 
 	_, err := mockExecute(destDir, "git", "clone", repoUrl, ".")
-	fmt.Println("[mock execute] repoUrl: ", repoUrl)
-	fmt.Println("[mock execute] error: ", err)
 
 	if err != nil {
 		if m.GetToken() == "" {
@@ -132,7 +124,6 @@ func (m *MockGitUrl) CloneGitRepo(destDir string) error {
 }
 
 func (m *MockGitUrl) DownloadGitRepoResources(url string, destDir string, httpTimeout *int, token string) error {
-	//gitUrl, err := MockNewGitUrlWithURL(url)
 	gitUrl := m
 	if gitUrl.IsGitProviderRepo() && gitUrl.IsFile {
 		stackDir, err := ioutil.TempDir(os.TempDir(), fmt.Sprintf("git-resources"))
@@ -174,17 +165,4 @@ func (m *MockGitUrl) GitRawFileAPI() string {
 
 func (m *MockGitUrl) IsGitProviderRepo() bool {
 	return true
-}
-
-func ConvertUrlToMockUrl(g Url) MockGitUrl {
-	m := MockGitUrl{}
-	m.Protocol = g.Protocol
-	m.Host = g.Host
-	m.Owner = g.Owner
-	m.Repo = g.Repo
-	m.Branch = g.Branch
-	m.Path = g.Path
-	m.token = g.token
-	m.IsFile = g.IsFile
-	return m
 }

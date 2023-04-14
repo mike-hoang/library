@@ -2817,6 +2817,7 @@ func Test_parseParentAndPluginFromURI(t *testing.T) {
 				parent.Uri = parentTestServer.URL
 
 				tt.args.devFileObj.Data.SetParent(parent)
+				//tt.args.devFileObj.Ctx.Git = &git.MockGitUrl{}
 			}
 			if !reflect.DeepEqual(tt.pluginDevfile, DevfileObj{}) {
 
@@ -2861,7 +2862,7 @@ func Test_parseParentAndPluginFromURI(t *testing.T) {
 				tt.args.devFileObj.Data.AddComponents(plugincomp)
 
 			}
-			err := parseParentAndPlugin(tt.args.devFileObj, &resolutionContextTree{}, resolverTools{})
+			err := parseParentAndPlugin(tt.args.devFileObj, &resolutionContextTree{}, resolverTools{git: &git.MockGitUrl{}})
 
 			// Unexpected error
 			if (err != nil) != (tt.wantErr != nil) {
@@ -3071,9 +3072,22 @@ func Test_parseParentAndPlugin_RecursivelyReference(t *testing.T) {
 		testK8sClient := &testingutil.FakeK8sClient{
 			DevWorkspaceResources: devWorkspaceResources,
 		}
+		devFileObj.Ctx.Git = &git.MockGitUrl{
+			Protocol: "https",
+			Host:     "raw.githubusercontent.com",
+			Owner:    "devfile",
+			Repo:     "library",
+			Branch:   "main",
+			Path:     "devfile.yaml",
+			IsFile:   true,
+		}
+		httpTimeout := 0
+		devFileObj.Ctx.Git.SetToken("valid-token", &httpTimeout)
 		tool := resolverTools{
-			k8sClient: testK8sClient,
-			context:   context.Background(),
+			k8sClient:   testK8sClient,
+			context:     context.Background(),
+			httpTimeout: &httpTimeout,
+			git:         devFileObj.Ctx.Git,
 		}
 
 		err := parseParentAndPlugin(devFileObj, &resolutionContextTree{}, tool)
@@ -4146,7 +4160,7 @@ func Test_parseFromURI(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseFromURI(tt.importReference, tt.curDevfileCtx, &resolutionContextTree{}, resolverTools{}, &git.MockGitUrl{})
+			got, err := parseFromURI(tt.importReference, tt.curDevfileCtx, &resolutionContextTree{}, resolverTools{git: &git.MockGitUrl{}})
 			if (err != nil) != (tt.wantErr != nil) {
 				t.Errorf("Test_parseFromURI() unexpected error: %v, wantErr %v", err, tt.wantErr)
 			} else if err == nil && !reflect.DeepEqual(got.Data, tt.wantDevFile.Data) {
@@ -4291,7 +4305,7 @@ func Test_parseFromURI_GitResources(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := parseFromURI(tt.importReference, *tt.curDevfileCtx, &resolutionContextTree{}, resolverTools{httpTimeout: tt.timeout}, tt.gitUrl)
+			_, err := parseFromURI(tt.importReference, *tt.curDevfileCtx, &resolutionContextTree{}, resolverTools{httpTimeout: tt.timeout, git: tt.gitUrl})
 			if !reflect.DeepEqual(tt.wantError, err) {
 				t.Errorf("Expected error: %s, got error: %s", tt.wantError, err)
 			}
